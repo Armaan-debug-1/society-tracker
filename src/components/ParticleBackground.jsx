@@ -19,23 +19,17 @@ const ParticleBackground = () => {
         fpsLimit: 60,
         interactivity: {
           events: {
-            onHover: {
-              enable: true,
-              mode: "repulse", 
-            },
+            onHover: { enable: true, mode: "repulse" },
             resize: true,
           },
           modes: {
-            repulse: {
-              distance: 120,
-              duration: 0.4,
-            },
+            repulse: { distance: 120, duration: 0.4 },
           },
         },
         particles: {
-          // ✨ MULTI-COLOR MAGIC ADDED HERE ✨
+          // ✨ Deep Space Star Palette: White, Bright Cyan, Sky Blue, Soft Indigo
           color: { 
-            value: ["#06b6d4", "#6366f1", "#8b5cf6", "#ffffff"] // Cyan, Indigo, Purple, White
+            value: ["#ffffff", "#22d3ee", "#38bdf8", "#818cf8"] 
           },
           move: {
             direction: "none",
@@ -47,20 +41,15 @@ const ParticleBackground = () => {
           },
           number: {
             density: { enable: true, area: 800 },
-            value: 250, 
+            // YAHAN CHANGE KIYA HAI: 250 se 100 kar diya
+            value: 100, 
           },
           opacity: {
-            value: { min: 0.3, max: 0.9 }, // Thoda bright kar diya colors dikhane ke liye
-            animation: {
-              enable: true,
-              speed: 1,
-              minimumValue: 0.2,
-            },
+            value: { min: 0.2, max: 0.8 },
+            animation: { enable: true, speed: 1, minimumValue: 0.1 },
           },
           shape: { type: "circle" },
-          size: { 
-            value: { min: 1, max: 2.5 } // Size halka sa increase kiya taaki color pop ho
-          },
+          size: { value: { min: 0.5, max: 2.0 } },
         },
         detectRetina: true,
       }}
