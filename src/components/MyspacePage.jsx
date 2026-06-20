@@ -45,12 +45,31 @@ export default function MyspacePage({ user }) {
             {editId ? 'Modify Mission' : 'Launch New Task'}
           </h2>
           <form onSubmit={handleSaveTask} className="space-y-5">
-            <input className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-cyan-500 outline-none transition-all placeholder:text-white/20" placeholder="Task Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-            <textarea className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-cyan-500 outline-none transition-all h-28 placeholder:text-white/20" placeholder="Task Description" value={formData.desc} onChange={(e) => setFormData({...formData, desc: e.target.value})} />
+            <input className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-cyan-500 outline-none transition-all placeholder:text-white/20 text-white" placeholder="Task Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
+            <textarea className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-cyan-500 outline-none transition-all h-28 placeholder:text-white/20 text-white" placeholder="Task Description" value={formData.desc} onChange={(e) => setFormData({...formData, desc: e.target.value})} />
             
             <div className="grid grid-cols-2 gap-4">
-              <input type="date" className="bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white/50" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} required />
-              <input type="time" className="bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white/50" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} required />
+              {/* UPDATED DATE INPUT */}
+              <input 
+                type="date" 
+                className="bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-slate-300 cursor-pointer outline-none focus:border-cyan-500 transition-all" 
+                value={formData.date} 
+                onChange={(e) => setFormData({...formData, date: e.target.value})} 
+                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                style={{ colorScheme: 'dark' }}
+                required 
+              />
+              
+              {/* UPDATED TIME/CLOCK INPUT */}
+              <input 
+                type="time" 
+                className="bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm text-slate-300 cursor-pointer outline-none focus:border-cyan-500 transition-all" 
+                value={formData.time} 
+                onChange={(e) => setFormData({...formData, time: e.target.value})} 
+                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                style={{ colorScheme: 'dark' }}
+                required 
+              />
             </div>
             
             <div className="flex justify-between items-center bg-black/40 p-4 rounded-2xl border border-white/10">
@@ -60,7 +79,7 @@ export default function MyspacePage({ user }) {
                   style={{backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'][num-1]}}>{num}</button>
               ))}
             </div>
-            <button className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 py-5 rounded-2xl font-black uppercase text-sm tracking-[0.3em] hover:scale-[1.01] transition-transform">
+            <button className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 py-5 rounded-2xl font-black uppercase text-sm tracking-[0.3em] hover:scale-[1.01] transition-transform text-white">
               {editId ? 'Update System' : 'Sync to System'}
             </button>
           </form>
@@ -80,7 +99,7 @@ export default function MyspacePage({ user }) {
                     <p className="text-[11px] text-slate-400 uppercase tracking-widest mt-1">{task.deadline_date} • {task.deadline_time}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setEditId(task.id); setFormData({ name: task.name, desc: task.description, date: task.deadline_date, time: task.deadline_time, priority: task.priority }); }} className="text-[10px] bg-white/5 hover:bg-white/20 px-4 py-2 rounded-lg transition-all uppercase tracking-widest">Edit</button>
+                    <button onClick={() => { setEditId(task.id); setFormData({ name: task.name, desc: task.description, date: task.deadline_date, time: task.deadline_time, priority: task.priority }); }} className="text-[10px] bg-white/5 hover:bg-white/20 px-4 py-2 rounded-lg transition-all uppercase tracking-widest text-white">Edit</button>
                     <button onClick={() => handleDelete(task.id)} className="text-[10px] bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-lg transition-all uppercase tracking-widest">Delete</button>
                   </div>
                 </motion.div>

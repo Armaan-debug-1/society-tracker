@@ -54,13 +54,19 @@ function HomePage() {
           SOCIETY TRACKER
         </h1>
 
-        {/* LOGO KA SIZE BADA KIYA HAI: h-14 se h-24 kar diya */}
         <div className="h-24 w-auto">
+        <a 
+          href="https://istetiet.com/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="h-24 w-auto block cursor-pointer"
+        >
           <img 
             src="/logo.png" 
             alt="Logo" 
             className="h-full w-full object-contain drop-shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:scale-105 transition-transform duration-300"
           />
+        </a>
         </div>
 
       </header>
