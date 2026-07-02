@@ -11,6 +11,7 @@ import MyspacePage from './components/MyspacePage';
 import ChannelTasks from './components/ChannelTasks';
 import FloatingDock from './components/FloatingDock';
 import LoadingScreen from './components/LoadingScreen'; // Ye import zaroori hai
+import Developers from "./components/Developers";
 
 function DockWrapper() {
   const location = useLocation();
@@ -55,6 +56,7 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/profile" element={<Profile user={currentUser} />} />
           <Route path="/my-space" element={<MyspacePage user={currentUser} />} />
+          <Route path="/developers" element={<Developers />} />
         </Routes>
         <DockWrapper />
       </div>
