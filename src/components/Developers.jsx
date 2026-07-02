@@ -3,7 +3,7 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import ParticleBackground from "./ParticleBackground";
 import FloatingDock from "./FloatingDock";
 
-// Advanced Immersive Card with Extreme Laser Border Sweep + Dynamic 3D Physics Grid
+// Advanced Immersive Card with Extreme Laser Border Sweep + Fixed 2x2 Layout Matrix
 const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorTheme }) => {
   const cardRef = useRef(null);
   const [hovered, setHovered] = useState(false);
@@ -62,18 +62,20 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
         rotateY: springRotateY,
         transformStyle: "preserve-3d",
         boxShadow: hovered 
-          ? `0 30px 70px -10px ${glowColor}60, 0 0 50px 5px ${glowColor}40` 
+          ? `0 35px 75px -10px ${glowColor}70, 0 0 55px 5px ${glowColor}50` 
           : '0 15px 35px rgba(0,0,0,0.7)',
+        willChange: "transform, box-shadow",
+        transformPerspective: 1000
       }}
       whileHover={{ scale: 1.03 }}
       transition={{ type: "spring", stiffness: 400, damping: 18 }}
-      // Increased padding to p-10 and adjusted height structure for larger cards
-      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-10 flex items-center gap-8 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[180px] md:min-h-[220px]"
+      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-10 flex items-center gap-8 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[180px] md:min-h-[220px] z-10"
     >
       {/* 1. LIQUID RADIAL BACKGROUND GLOW SWEEP */}
       <div 
         style={{
-          background: `radial-gradient(600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}30, transparent 50%)`
+          background: `radial-gradient(600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}30, transparent 50%)`,
+          transform: "translateZ(0px)"
         }}
         className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
       />
@@ -81,7 +83,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
       {/* 2. EXTREME BRIGHT LASER BORDER SWEEP FRAME */}
       <div 
         style={{
-          background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}, transparent 55%)`
+          background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}, transparent 55%)`,
+          transform: "translateZ(0px)"
         }}
         className="absolute -inset-[2px] rounded-3xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0 mix-blend-screen"
       />
@@ -89,7 +92,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
       {/* SOLID CORE REINFORCEMENT BASE */}
       <div className="absolute inset-[1px] bg-[#05080f] rounded-[22px] z-10 pointer-events-none" />
 
-      {/* LEFT SIDE: ROUND PHOTO CONTAINER WITH DYNAMIC POP (Increased size) */}
+      {/* LEFT SIDE: ROUND PHOTO CONTAINER WITH DYNAMIC POP */}
       <div 
         style={{ 
           transform: hovered ? "translateZ(50px)" : "translateZ(0px)",
@@ -104,22 +107,22 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
         )}
       </div>
 
-      {/* RIGHT SIDE: CONTENT & SOCIAL PATHS (Increased text scale) */}
+      {/* RIGHT SIDE: CONTENT & SOCIAL PATHS */}
       <div className="flex-grow text-left relative z-20 pl-2">
         
-        {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER */}
+        {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER WITH CUSTOM MATRIX GLOW */}
         <div 
           style={{ 
             transform: hovered ? "translateZ(70px)" : "translateZ(0px)",
             transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
           }}
-          className="mb-2"
+          className="mb-2 relative"
         >
           <motion.h4 
             initial={false}
             animate={{
               color: hovered ? glowColor : "#ffffff",
-              letterSpacing: hovered ? "0.06em" : "0em",
+              letterSpacing: hovered ? "0.08em" : "0em",
               filter: hovered ? `drop-shadow(0 0 12px ${glowColor})` : "drop-shadow(0 0 0px rgba(0,0,0,0))"
             }}
             transition={{ type: "spring", stiffness: 250, damping: 18 }}
@@ -129,9 +132,9 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
           </motion.h4>
         </div>
 
-        <p className="text-xs md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-5 select-none opacity-80">{role}</p>
+        <p className="text-xs md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-5 select-none opacity-80">{role || "DEVELOPER"}</p>
         
-        {/* Clickable Social Navigation Icons (Slightly larger layout) */}
+        {/* Clickable Social Navigation Icons */}
         <div 
           style={{ 
             transform: hovered ? "translateZ(40px)" : "translateZ(0px)",
@@ -173,7 +176,7 @@ export default function Developers() {
 
   const teamMembers = [
     { name: "Gauri Goyal", github: "https://github.com/Gauri173", linkedin: "https://www.linkedin.com/in/gauri-goyal-11475737a/", img: "/dev1.jpeg", theme: "cyan" },
-    { name: "Armaan Gupta", github: " https://github.com/Armaan-debug-1", linkedin: "https://www.linkedin.com/in/armaan-gupta67?utm_source=share_via&utm_content=profile&utm_medium=member_android", img: "/dev2.jpeg", theme: "pink" },
+    { name: "Armaan Gupta", github: "https://github.com/Armaan-debug-1", linkedin: "https://www.linkedin.com/in/armaan-gupta67?utm_source=share_via&utm_content=profile&utm_medium=member_android", img: "/dev2.jpeg", theme: "pink" },
     { name: "Bhavya Goyal", github: "https://github.com/07BhavyaGoyal", linkedin: "https://www.linkedin.com/in/bhavyagoyal07/", img: "/dev3.jpeg", theme: "green" },
     { name: "Siddhant Jindal", github: "https://github.com", linkedin: "https://linkedin.com", img: "/dev4.jpeg", theme: "orange" },
   ];
@@ -189,12 +192,19 @@ export default function Developers() {
         >
           {PAGE_HEADER_TITLE}
         </h1>
-        <p className="text-slate-500 text-xs mt-3 tracking-widest font-extrabold uppercase"></p>
+        <p className="text-slate-500 text-xs mt-3 tracking-widest font-extrabold uppercase">ISTE Technical Chapter Web Development Team</p>
       </header>
 
-      {/* STABLE 2-CARDS-PER-LINE GRID SYSTEM (Expanded layout boundaries) */}
+      {/* FORCE GRID CONTROL VIA INLINE INJECTION TO GUARANTEE 2-2 DESKTOP SPLIT */}
       <main className="flex-grow max-w-7xl mx-auto px-8 py-4 relative z-20 w-full">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '40px' }}>
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(2, 1fr)' : 'repeat(1, 1fr)', 
+            gap: '40px',
+            width: '100%' 
+          }}
+        >
           {teamMembers.map((member, idx) => (
             <DeveloperCard 
               key={idx}
