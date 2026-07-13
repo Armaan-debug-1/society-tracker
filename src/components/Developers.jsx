@@ -69,7 +69,13 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
       }}
       whileHover={{ scale: 1.03 }}
       transition={{ type: "spring", stiffness: 400, damping: 18 }}
-      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-10 flex items-center gap-8 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[180px] md:min-h-[220px] z-10"
+      // FIX: padding, gap, and direction all scale down for mobile:
+      // - p-6 sm:p-8 md:p-10        (was a flat p-10 — too much on a small screen)
+      // - gap-4 sm:gap-6 md:gap-8   (was a flat gap-8 — crowded the text on mobile)
+      // - flex-col sm:flex-row      (stacks photo above text on very narrow screens
+      //   instead of squeezing both into one cramped row)
+      // - text-center sm:text-left (keeps stacked layout looking centered/intentional)
+      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 md:gap-8 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[180px] md:min-h-[220px] z-10 text-center sm:text-left"
     >
       {/* 1. LIQUID RADIAL BACKGROUND GLOW SWEEP */}
       <div 
@@ -98,7 +104,10 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
           transform: hovered ? "translateZ(50px)" : "translateZ(0px)",
           transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
         }}
-        className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl"
+        // FIX: w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 — the photo was a flat
+        // 112px (w-28) regardless of screen size, which alone ate roughly a
+        // third of a small phone's card width. Scales down on mobile now.
+        className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl"
       >
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
@@ -108,7 +117,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
       </div>
 
       {/* RIGHT SIDE: CONTENT & SOCIAL PATHS */}
-      <div className="flex-grow text-left relative z-20 pl-2">
+      <div className="flex-grow relative z-20 sm:pl-2 min-w-0 w-full">
         
         {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER WITH CUSTOM MATRIX GLOW */}
         <div 
@@ -126,13 +135,16 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
               filter: hovered ? `drop-shadow(0 0 12px ${glowColor})` : "drop-shadow(0 0 0px rgba(0,0,0,0))"
             }}
             transition={{ type: "spring", stiffness: 250, damping: 18 }}
-            className="text-2xl md:text-3xl font-black tracking-wide select-none"
+            // FIX: text-xl sm:text-2xl md:text-3xl — added a smaller mobile
+            // step (was jumping straight from text-2xl to text-3xl with
+            // nothing sized for phones).
+            className="text-xl sm:text-2xl md:text-3xl font-black tracking-wide select-none break-words"
           >
             {name}
           </motion.h4>
         </div>
 
-        <p className="text-xs md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-5 select-none opacity-80">{role || "DEVELOPER"}</p>
+        <p className="text-xs md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-4 sm:mb-5 select-none opacity-80">{role || "DEVELOPER"}</p>
         
         {/* Clickable Social Navigation Icons */}
         <div 
@@ -140,7 +152,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, imageUrl, colorThem
             transform: hovered ? "translateZ(40px)" : "translateZ(0px)",
             transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
           }}
-          className="flex gap-5 items-center"
+          className="flex gap-5 items-center justify-center sm:justify-start"
         >
           <a 
             href={githubUrl || "#"} 
@@ -186,25 +198,23 @@ export default function Developers() {
       <ParticleBackground />
 
       {/* HEADER */}
-      <header className="p-10 md:p-14 relative z-20 text-center">
+      {/* FIX: p-6 sm:p-10 md:p-14 and text-3xl sm:text-4xl md:text-5xl — both
+          were fixed-large (p-10/text-4xl minimum), wasting vertical space and
+          running a large heading close to the screen edges on small phones. */}
+      <header className="p-6 sm:p-10 md:p-14 relative z-20 text-center">
         <h1 
-          className="text-4xl md:text-5xl font-black tracking-widest uppercase bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent"
+          className="text-3xl sm:text-4xl md:text-5xl font-black tracking-widest uppercase bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent"
         >
           {PAGE_HEADER_TITLE}
         </h1>
         <p className="text-slate-500 text-xs mt-3 tracking-widest font-extrabold uppercase">ISTE Technical Chapter Web Development Team</p>
       </header>
 
-      {/* FORCE GRID CONTROL VIA INLINE INJECTION TO GUARANTEE 2-2 DESKTOP SPLIT */}
-      <main className="flex-grow max-w-7xl mx-auto px-8 py-4 relative z-20 w-full">
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(2, 1fr)' : 'repeat(1, 1fr)', 
-            gap: '40px',
-            width: '100%' 
-          }}
-        >
+      {/* GRID — now driven entirely by CSS breakpoints instead of a one-time
+          JS window.innerWidth check, so it responds live to resizing/rotation
+          instead of only being correct on first render. */}
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 relative z-20 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-10 w-full">
           {teamMembers.map((member, idx) => (
             <DeveloperCard 
               key={idx}

@@ -75,7 +75,9 @@ function HomePage() {
         
         {/* CONTAINER: flex-col on mobile (vertical accordion), flex-row on desktop */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-6xl h-[75vh] min-h-[500px] md:min-h-0 md:h-[450px] items-stretch">
-          {events.map((event, index) => (
+          {events.map((event, index) => {
+            const isActive = hoveredIndex === index;
+            return (
             <motion.div
               key={index}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -83,33 +85,51 @@ function HomePage() {
               transition={{ delay: index * 0.1 }}
               
               // Added onClick for mobile tap-to-toggle
-              onClick={() => setHoveredIndex(hoveredIndex === index ? null : index)}
+              onClick={() => setHoveredIndex(isActive ? null : index)}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
               
               className={`relative rounded-3xl border border-white/10 bg-[#0a0f1c] shadow-xl transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] flex flex-col overflow-hidden cursor-pointer md:cursor-default
-                ${hoveredIndex === index ? 'flex-[2.5] shadow-[0_0_50px_-15px_rgba(34,211,238,0.4)] border-cyan-500/50' : 'flex-1'}`}
+                ${isActive ? 'flex-[2.5] shadow-[0_0_50px_-15px_rgba(34,211,238,0.4)] border-cyan-500/50' : 'flex-1'}`}
             >
               <div className="absolute inset-0 z-0 bg-black">
                 <img 
                   src={event.image} 
                   alt={event.name} 
                   className={`w-full h-full object-cover transition-all duration-700 
-                    ${hoveredIndex === index ? 'scale-110 blur-[2px]' : 'scale-100'}`} 
+                    ${isActive ? 'scale-110 blur-[2px]' : 'scale-100'}`} 
                 />
                 <div className={`absolute inset-0 transition-all duration-700 
-                  ${hoveredIndex === index ? 'bg-cyan-900/60' : 'bg-black/60'}`} />
+                  ${isActive ? 'bg-cyan-900/60' : 'bg-black/60'}`} />
               </div>
 
-              <div className="relative z-10 flex flex-col h-full p-5 md:p-6">
-                <div className="flex flex-col items-center justify-center transition-all duration-500 mb-2 h-full md:h-auto shrink-0">
+              {/* Wrapper needs min-h-0 so the flex-1 channel list below can actually shrink and scroll instead of being pushed off/clipped */}
+              <div className="relative z-10 flex flex-col h-full min-h-0 p-5 md:p-6">
+                {/*
+                  FIX: this used to be `h-full md:h-auto`, which meant on mobile the
+                  title ALWAYS claimed 100% of the card's height, leaving zero room
+                  for the channel list below it — even when expanded.
+                  Now it only claims full height while collapsed; once active
+                  (tapped/hovered) it shrinks to its natural size on every
+                  breakpoint, freeing up space for the channel list.
+                */}
+                <div className={`flex flex-col items-center justify-center transition-all duration-500 mb-2 shrink-0
+                  ${isActive ? 'h-auto' : 'h-full'} md:h-auto`}>
                   <h4 className="font-black text-xl md:text-2xl text-center text-white drop-shadow-lg leading-tight tracking-wide">
                     {event.name}
                   </h4>
                 </div>
                 
+                {/*
+                  FIX: `h-full` swapped for `flex-1` so this list fills whatever
+                  space the (now-shrunk) title left behind, instead of trying to
+                  claim height it was never given. `min-h-0` is required for
+                  overflow-y-auto to actually engage inside a flex column — without
+                  it, flex items refuse to shrink below their content size and the
+                  scrollbar never activates.
+                */}
                 <div className={`flex flex-col gap-0 overflow-y-auto scrollbar-hide transition-all duration-500 border border-white/10 rounded-xl bg-black/40 backdrop-blur-sm md:mt-2
-                  ${hoveredIndex === index ? 'opacity-100 h-full py-2' : 'opacity-0 h-0 border-transparent py-0'}`}>
+                  ${isActive ? 'opacity-100 flex-1 min-h-0 py-2' : 'opacity-0 h-0 border-transparent py-0'}`}>
                   {subheadings.map((sub) => {
                     const canAccess = userRole.includes('ADMIN') || channelAccess[sub]?.some(r => userRole.includes(r));
                     return (
@@ -136,7 +156,8 @@ function HomePage() {
                 </div>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       </main>
 
