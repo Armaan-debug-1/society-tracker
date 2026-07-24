@@ -201,7 +201,7 @@ export default function Developers() {
     { name: "Bhavya Goyal", github: "https://github.com/07BhavyaGoyal", linkedin: "https://www.linkedin.com/in/bhavyagoyal07/", instagram: "https://www.instagram.com/bgoyal_07/", img: "/dev3.jpeg", theme: "green" },
     { name: "Siddhant Jindal", github: "https://github.com", linkedin: "https://linkedin.com", instagram: "https://www.instagram.com/siddhant_jindal72/", img: "/dev4.jpeg", theme: "orange" },
     { name: "Varchasvi Gupta", github: "https://github.com/Varchasvi22", linkedin: "https://www.linkedin.com/in/varchasvi-gupta-90716737b/", instagram: "https://www.instagram.com/debuggingvarchasvi", img: "/dev5.jpeg", theme: "purple" },
-    { name: "Abhilasha Das", github: "https://github.com/abhilashadas2406-eng", linkedin: "https://www.linkedin.com/in/abhilasha-das-93828937a/", instagram: "https://instagram.com", img: "/dev6.jpeg", theme: "yellow" },
+    { name: "Abhilasha Das", github: "https://github.com/abhilashadas2406-eng", linkedin: "https://www.linkedin.com/in/abhilasha-das-93828937a/", instagram: "https://www.instagram.com/_.abhil1sha._/", img: "/dev6.jpeg", theme: "yellow" },
   ];
 
   return (
