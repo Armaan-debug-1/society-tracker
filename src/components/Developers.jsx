@@ -71,8 +71,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
       }}
       whileHover={{ scale: 1.03 }}
       transition={{ type: "spring", stiffness: 400, damping: 18 }}
-      // INCREASED: min-h, md:min-h, and md:p-12
-      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-10 md:p-12 flex items-center gap-8 md:gap-10 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[200px] md:min-h-[260px] z-10"
+      /* RESPONSIVE FIX: Stack vertically on mobile, side-by-side on sm/md screens. Adjusted padding for mobile. */
+      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-8 md:p-12 flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-6 md:gap-10 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[220px] md:min-h-[260px] z-10 text-center sm:text-left"
     >
       {/* 1. LIQUID RADIAL BACKGROUND GLOW SWEEP */}
       <div 
@@ -101,8 +101,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
           transform: hovered ? "translateZ(50px)" : "translateZ(0px)",
           transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
         }}
-        // INCREASED: w-32 h-32
-        className="w-32 h-32 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl"
+        /* RESPONSIVE FIX: Smaller image on mobile, normal size on desktop */
+        className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl"
       >
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
@@ -112,7 +112,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
       </div>
 
       {/* RIGHT SIDE: CONTENT & SOCIAL PATHS */}
-      <div className="flex-grow text-left relative z-20 pl-2">
+      <div className="flex-grow relative z-20 md:pl-2 w-full">
         
         {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER WITH CUSTOM MATRIX GLOW */}
         <div 
@@ -120,7 +120,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             transform: hovered ? "translateZ(70px)" : "translateZ(0px)",
             transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
           }}
-          className="mb-2 relative"
+          className="mb-1 md:mb-2 relative"
         >
           <motion.h4 
             initial={false}
@@ -136,7 +136,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
           </motion.h4>
         </div>
 
-        <p className="text-xs md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-5 select-none opacity-80">{role || "DEVELOPER"}</p>
+        <p className="text-[10px] md:text-sm text-slate-400 font-extrabold tracking-widest uppercase mb-4 md:mb-5 select-none opacity-80">{role || "DEVELOPER"}</p>
         
         {/* Clickable Social Navigation Icons */}
         <div 
@@ -144,7 +144,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             transform: hovered ? "translateZ(40px)" : "translateZ(0px)",
             transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
           }}
-          className="flex gap-5 items-center"
+          /* RESPONSIVE FIX: Center icons on mobile, align left on larger screens */
+          className="flex gap-4 md:gap-5 items-center justify-center sm:justify-start"
         >
           {/* GitHub Link */}
           <a 
@@ -154,7 +155,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             onClick={(e) => e.stopPropagation()} 
             className="hover:scale-125 transition-all opacity-50 hover:opacity-100 hover:drop-shadow-[0_0_8px_#fff]"
           >
-            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
             </svg>
           </a>
@@ -168,7 +169,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             className="hover:scale-125 transition-all opacity-50 hover:opacity-100"
             style={{ filter: hovered ? `drop-shadow(0 0 8px ${glowColor})` : 'none' }}
           >
-            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
               <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
             </svg>
           </a>
@@ -182,7 +183,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             className="hover:scale-125 transition-all opacity-50 hover:opacity-100"
             style={{ filter: hovered ? `drop-shadow(0 0 8px ${glowColor})` : 'none' }}
           >
-            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
               <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
             </svg>
           </a>
@@ -209,25 +210,18 @@ export default function Developers() {
       <ParticleBackground />
 
       {/* HEADER */}
-      <header className="p-10 md:p-14 relative z-20 text-center">
+      <header className="px-4 py-10 md:p-14 relative z-20 text-center">
         <h1 
-          className="text-4xl md:text-5xl font-black tracking-widest uppercase bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent"
+          className="text-3xl md:text-5xl font-black tracking-widest uppercase bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent"
         >
           {PAGE_HEADER_TITLE}
         </h1>
-        <p className="text-slate-500 text-xs mt-3 tracking-widest font-extrabold uppercase">ISTE Technical Chapter Web Development Team</p>
+        <p className="text-slate-500 text-[10px] md:text-xs mt-3 tracking-widest font-extrabold uppercase">ISTE Technical Chapter Web Development Team</p>
       </header>
 
-      {/* RESTORED ORIGINAL INLINE GRID: 2-2-2 matrix using window.innerWidth */}
-      <main className="flex-grow max-w-7xl mx-auto px-8 py-4 relative z-20 w-full">
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(2, 1fr)' : 'repeat(1, 1fr)', 
-            gap: '40px',
-            width: '100%' 
-          }}
-        >
+      {/* RESPONSIVE FIX: Removed inline window.innerWidth grid and replaced with Tailwind CSS grid */}
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-8 py-4 relative z-20 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 w-full">
           {teamMembers.map((member, idx) => (
             <DeveloperCard 
               key={idx}
