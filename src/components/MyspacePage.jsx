@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import ParticleBackground from './ParticleBackground';
+
+const SORT_OPTIONS = [
+  { value: 'priority-desc', label: 'Priority (High → Low)' },
+  { value: 'priority-asc', label: 'Priority (Low → High)' },
+  { value: 'recent', label: 'Recently Added' },
+  { value: 'expiring', label: 'Expiring Soon' },
+];
 
 export default function MyspacePage({ user }) {
   const [tasks, setTasks] = useState([]);
   const [formData, setFormData] = useState({ name: '', desc: '', date: '', time: '', priority: 1 });
   const [editId, setEditId] = useState(null);
+  const [sortBy, setSortBy] = useState('priority-desc');
 
   useEffect(() => { fetchTasks(); }, [user]);
 
@@ -31,6 +39,42 @@ export default function MyspacePage({ user }) {
   };
 
   const handleDelete = async (id) => { await supabase.from('my_tasks').delete().eq('id', id); fetchTasks(); };
+
+  const sortedTasks = useMemo(() => {
+    const list = [...tasks];
+
+    switch (sortBy) {
+      case 'priority-asc':
+        return list.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+
+      case 'priority-desc':
+        return list.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+
+      case 'recent':
+        return list.sort((a, b) => {
+          if (a.created_at && b.created_at) {
+            return new Date(b.created_at) - new Date(a.created_at);
+          }
+          // No created_at column: fall back to insertion order via id (assumes
+          // an auto-incrementing primary key, so higher id = more recently added).
+          // This does not touch the database schema.
+          return (b.id ?? 0) - (a.id ?? 0);
+        });
+
+      case 'expiring':
+        return list.sort((a, b) => {
+          const aDate = a.deadline_date || '';
+          const bDate = b.deadline_date || '';
+          if (aDate !== bDate) return aDate.localeCompare(bDate);
+          const aTime = a.deadline_time || '';
+          const bTime = b.deadline_time || '';
+          return aTime.localeCompare(bTime);
+        });
+
+      default:
+        return list;
+    }
+  }, [tasks, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#030508] text-white p-8 flex items-center justify-center relative overflow-hidden font-sans">
@@ -87,10 +131,32 @@ export default function MyspacePage({ user }) {
 
         {/* Orbital Dashboard */}
         <section className="bg-[#0a0f1c]/70 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl flex flex-col">
-          <h2 className="text-3xl font-black mb-8 uppercase tracking-widest text-white/90">Orbital Dashboard</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <h2 className="text-3xl font-black uppercase tracking-widest text-white/90">Orbital Dashboard</h2>
+
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full sm:w-auto appearance-none bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl pl-4 pr-10 py-3 text-xs font-bold uppercase tracking-widest text-cyan-300 outline-none cursor-pointer transition-all duration-300 hover:border-cyan-500/50 hover:bg-black/60 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-[#0a0f1c] text-white normal-case tracking-normal">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
           <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide flex-grow">
             <AnimatePresence>
-              {tasks.length > 0 ? tasks.map(task => (
+              {sortedTasks.length > 0 ? sortedTasks.map(task => (
                 <motion.div key={task.id} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-black/40 border-l-4 rounded-2xl p-6 flex justify-between items-center border border-white/5 hover:border-white/20 transition-all shadow-lg" 
                   style={{ borderLeftColor: ['#10b981', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'][task.priority-1] }}>
