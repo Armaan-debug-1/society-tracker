@@ -17,18 +17,81 @@ export default function MyspacePage({ user }) {
     setTasks(data || []);
   }
 
-  const handleSaveTask = async (e) => {
-    e.preventDefault();
-    let userId = user?.id || (await supabase.auth.getUser()).data.user?.id;
-    if (editId) {
-      await supabase.from('my_tasks').update({ name: formData.name, description: formData.desc, deadline_date: formData.date, deadline_time: formData.time, priority: formData.priority }).eq('id', editId);
-    } else {
-      await supabase.from('my_tasks').insert([{ user_id: userId, name: formData.name, description: formData.desc, deadline_date: formData.date, deadline_time: formData.time, priority: formData.priority }]);
-    }
-    setEditId(null);
-    setFormData({ name: '', desc: '', date: '', time: '', priority: 1 });
-    fetchTasks();
-  };
+ const handleSaveTask = async (e) => {
+  e.preventDefault();
+
+  const {
+    data: { user: authUser },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.error("Could not identify user:", userError);
+    alert(userError.message);
+    return;
+  }
+
+  const userId = user?.id || authUser?.id;
+
+  if (!userId) {
+    alert("Please log in again.");
+    return;
+  }
+
+  let result;
+
+  if (editId) {
+    result = await supabase
+      .from("my_tasks")
+      .update({
+        name: formData.name.trim(),
+        description: formData.desc,
+        deadline_date: formData.date,
+        deadline_time: formData.time,
+        priority: formData.priority,
+      })
+      .eq("id", editId)
+      .select();
+  } else {
+    result = await supabase
+      .from("my_tasks")
+      .insert([
+        {
+          user_id: userId,
+          name: formData.name.trim(),
+          description: formData.desc,
+          deadline_date: formData.date,
+          deadline_time: formData.time,
+          priority: formData.priority,
+        },
+      ])
+      .select();
+  }
+
+  if (result.error) {
+    console.error("My Space task save failed:", result.error);
+
+    alert(
+      `Task could not be saved:\n${result.error.message}`
+    );
+
+    return;
+  }
+
+  console.log("My Space task saved:", result.data);
+
+  setEditId(null);
+
+  setFormData({
+    name: "",
+    desc: "",
+    date: "",
+    time: "",
+    priority: 1,
+  });
+
+  await fetchTasks();
+};
 
   const handleDelete = async (id) => { await supabase.from('my_tasks').delete().eq('id', id); fetchTasks(); };
 
