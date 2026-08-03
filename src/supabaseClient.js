@@ -1,7 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Yeh 'export' word hi missing/unsaved hoga jiski wajah se error aayi
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl) {
+  throw new Error("VITE_SUPABASE_URL is missing from .env");
+}
+
+if (!supabaseKey) {
+  throw new Error("VITE_SUPABASE_ANON_KEY is missing from .env");
+}
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseKey
+);
