@@ -5,28 +5,36 @@ import ParticleBackground from "./ParticleBackground";
 
 export default function Profile({ user }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', contact: '', gender: '', association: '' });
+  const [formData, setFormData] = useState({ fullName: '', contact: '', gender: '', association: '', password: '' });
 
   useEffect(() => { if (user?.id) fetchProfileData(); }, [user?.id]);
 
   async function fetchProfileData() {
+    const localData = localStorage.getItem(`demo_profile_${user?.id}`);
+    if (localData) {
+      setFormData(JSON.parse(localData));
+      return;
+    }
+
     const { data } = await supabase.from('profiles').select('full_name, contact, gender, association').eq('id', user.id).maybeSingle();
     if (data) {
       setFormData({
         fullName: data.full_name || '', contact: data.contact || '',
-        gender: data.gender || '', association: data.association || ''
+        gender: data.gender || '', association: data.association || '',
+        password: 'demo_password'
       });
     }
   }
 
-  const handleSave = async () => {
-    const { error } = await supabase.from('profiles').update({
-      full_name: formData.fullName, contact: formData.contact,
-      gender: formData.gender, association: formData.association
-    }).eq('id', user.id);
-    
-    if (!error) setIsEditing(false);
-    alert(error ? "Error saving!" : "Profile Updated!");
+  const handleSave = () => {
+    localStorage.setItem(`demo_profile_${user?.id}`, JSON.stringify(formData));
+    setIsEditing(false);
+    alert("Profile Updated (Local Demo)!");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
   };
 
   return (
@@ -70,20 +78,26 @@ export default function Profile({ user }) {
           >
             <div className="flex justify-between items-center border-b border-white/5 pb-6">
               <h4 className="text-sm font-black uppercase tracking-[0.3em] text-cyan-400">Registry Details</h4>
-              <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
-                className="text-xs font-black uppercase tracking-[0.2em] text-white bg-white/5 px-10 py-4 rounded-2xl border border-white/10 hover:bg-cyan-600 transition-all active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
-                {isEditing ? 'Save Changes' : 'Edit Registry'}
-              </button>
+              <div className="flex gap-4">
+                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
+                  className="text-xs font-black uppercase tracking-[0.2em] text-white bg-white/5 px-10 py-4 rounded-2xl border border-white/10 hover:bg-cyan-600 transition-all active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                  {isEditing ? 'Save Changes' : 'Edit Registry'}
+                </button>
+                <button onClick={handleLogout} 
+                  className="text-xs font-black uppercase tracking-[0.2em] text-white bg-red-500/10 px-10 py-4 rounded-2xl border border-red-500/20 hover:bg-red-600 hover:border-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all active:scale-95">
+                  Logout
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {[ { label: 'Full Name', name: 'fullName' }, { label: 'Contact', name: 'contact' }, { label: 'Gender', name: 'gender' }, { label: 'Association', name: 'association' } ].map((field) => (
+              {[ { label: 'Full Name', name: 'fullName' }, { label: 'Contact', name: 'contact' }, { label: 'Gender', name: 'gender' }, { label: 'Association', name: 'association' }, { label: 'Password', name: 'password', type: 'password' } ].map((field) => (
                 <motion.div key={field.name} whileHover={{ y: -5 }}>
                   <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">{field.label}</label>
                   {isEditing ? (
-                    <input name={field.name} value={formData[field.name]} onChange={(e) => setFormData({...formData, [field.name]: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-5 text-base focus:border-cyan-500 outline-none transition-all shadow-inner" />
+                    <input type={field.type || "text"} name={field.name} value={formData[field.name]} onChange={(e) => setFormData({...formData, [field.name]: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-5 text-base focus:border-cyan-500 outline-none transition-all shadow-inner" />
                   ) : (
-                    <div className="w-full bg-black/30 border border-white/5 rounded-2xl px-6 py-5 text-base text-slate-200 font-medium tracking-wide">{formData[field.name] || 'Not set'}</div>
+                    <div className="w-full bg-black/30 border border-white/5 rounded-2xl px-6 py-5 text-base text-slate-200 font-medium tracking-wide">{field.type === 'password' ? '••••••••' : (formData[field.name] || 'Not set')}</div>
                   )}
                 </motion.div>
               ))}
