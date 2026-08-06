@@ -26,6 +26,11 @@ const items = [
     isNotification: true,
   },
   {
+    name: "PROGRESS BAR",
+    path: "/progress",
+    icon: "📊",
+  },
+  {
     name: "PROFILE",
     path: "/profile",
     icon: "👤",

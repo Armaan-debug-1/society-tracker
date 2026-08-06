@@ -162,7 +162,7 @@ function HomePage() {
       try {
         setRoleLoading(true);
         setRoleError("");
-
+        
         const {
           data: { user },
           error: userError,
