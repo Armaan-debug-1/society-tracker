@@ -30,6 +30,11 @@ const items = [
     path: "/profile",
     icon: "👤",
   },
+  {
+    name: "PROGRESS BAR",
+    path: "/progress",
+    icon: "📊",
+  },
 ];
 
 export default function FloatingDock({ user }) {

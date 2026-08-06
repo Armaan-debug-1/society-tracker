@@ -19,6 +19,7 @@ import FloatingDock from "./components/FloatingDock";
 import LoadingScreen from "./components/LoadingScreen";
 import Developers from "./components/Developers";
 import NotificationsPage from "./components/NotificationsPage";
+import ProgressBarPage from "./components/ProgressBarPage";
 
 function DockWrapper({ user }) {
   const location = useLocation();
@@ -161,6 +162,11 @@ function App() {
           <Route
             path="/notifications"
             element={<NotificationsPage user={currentUser} />}
+          />
+
+          <Route
+            path="/progress"
+            element={<ProgressBarPage user={currentUser} />}
           />
 
           <Route path="*" element={<NotFoundPage />} />
