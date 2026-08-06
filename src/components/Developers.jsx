@@ -3,21 +3,26 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import ParticleBackground from "./ParticleBackground";
 import FloatingDock from "./FloatingDock";
 
-// Advanced Immersive Card with Extreme Laser Border Sweep + Fixed Grid Layout Matrix
+// Advanced Immersive Card with Ultra-Smooth Hover Dynamics
 const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, imageUrl, colorTheme }) => {
   const cardRef = useRef(null);
   const [hovered, setHovered] = useState(false);
+  const requestRef = useRef(null);
 
-  // High-frequency mouse position sensors
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  // Raw mouse sensors
+  const rawMouseX = useMotionValue(0);
+  const rawMouseY = useMotionValue(0);
 
-  // Aggressive 3D angle matrix for strong tilt effect
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], [25, -25]);
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-25, 25]);
+  // Smooth mouse sensors to eliminate jitter and abrupt motion shifts
+  const mouseX = useSpring(rawMouseX, { stiffness: 120, damping: 22, mass: 0.8 });
+  const mouseY = useSpring(rawMouseY, { stiffness: 120, damping: 22, mass: 0.8 });
 
-  const springRotateX = useSpring(rotateX, { stiffness: 180, damping: 18, mass: 0.6 });
-  const springRotateY = useSpring(rotateY, { stiffness: 180, damping: 18, mass: 0.6 });
+  // Refined smooth 3D tilt matrix
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], [18, -18]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-18, 18]);
+
+  const springRotateX = useSpring(rotateX, { stiffness: 100, damping: 20, mass: 1 });
+  const springRotateY = useSpring(rotateY, { stiffness: 100, damping: 20, mass: 1 });
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -28,14 +33,20 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
     const currentX = (e.clientX - rect.left) / width - 0.5;
     const currentY = (e.clientY - rect.top) / height - 0.5;
 
-    mouseX.set(currentX);
-    mouseY.set(currentY);
+    rawMouseX.set(currentX);
+    rawMouseY.set(currentY);
 
-    // Direct inline dynamic injection for extreme border sweep pathing
     const xPixel = e.clientX - rect.left;
     const yPixel = e.clientY - rect.top;
-    cardRef.current.style.setProperty("--mouse-x", `${xPixel}px`);
-    cardRef.current.style.setProperty("--mouse-y", `${yPixel}px`);
+
+    // Use requestAnimationFrame to optimize layout calculations and keep border movement ultra-smooth
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    requestRef.current = requestAnimationFrame(() => {
+      if (cardRef.current) {
+        cardRef.current.style.setProperty("--mouse-x", `${xPixel}px`);
+        cardRef.current.style.setProperty("--mouse-y", `${yPixel}px`);
+      }
+    });
   };
 
   const themeColors = {
@@ -44,7 +55,10 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
     green: "#00ff66",
     orange: "#ff5500",
     purple: "#b000ff", 
-    yellow: "#ffcc00"  
+    yellow: "#ffcc00",
+    red: "#ff2a2a",
+    violet: "#8b5cf6",
+    teal: "#00f5d4"
   };
 
   const glowColor = themeColors[colorTheme] || themeColors.cyan;
@@ -56,8 +70,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
-        mouseX.set(0);
-        mouseY.set(0);
+        rawMouseX.set(0);
+        rawMouseY.set(0);
       }}
       style={{
         rotateX: springRotateX,
@@ -69,10 +83,9 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
         willChange: "transform, box-shadow",
         transformPerspective: 1000
       }}
-      whileHover={{ scale: 1.03 }}
-      transition={{ type: "spring", stiffness: 400, damping: 18 }}
-      /* RESPONSIVE FIX: Stack vertically on mobile, side-by-side on sm/md screens. Adjusted padding for mobile. */
-      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-8 md:p-12 flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-6 md:gap-10 cursor-pointer overflow-hidden group transition-all duration-300 w-full min-h-[220px] md:min-h-[260px] z-10 text-center sm:text-left"
+      whileHover={{ scale: 1.025 }}
+      transition={{ type: "spring", stiffness: 180, damping: 22, mass: 0.8 }}
+      className="relative bg-neutral-950 border border-white/5 rounded-3xl p-8 md:p-12 flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-6 md:gap-10 cursor-pointer overflow-hidden group transition-all duration-500 ease-out w-full min-h-[220px] md:min-h-[260px] z-10 text-center sm:text-left"
     >
       {/* 1. LIQUID RADIAL BACKGROUND GLOW SWEEP */}
       <div 
@@ -80,7 +93,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
           background: `radial-gradient(600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}30, transparent 50%)`,
           transform: "translateZ(0px)"
         }}
-        className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
+        className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out z-0"
       />
 
       {/* 2. EXTREME BRIGHT LASER BORDER SWEEP FRAME */}
@@ -89,7 +102,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
           background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${glowColor}, transparent 55%)`,
           transform: "translateZ(0px)"
         }}
-        className="absolute -inset-[2px] rounded-3xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0 mix-blend-screen"
+        className="absolute -inset-[2px] rounded-3xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out z-0 mix-blend-screen"
       />
 
       {/* SOLID CORE REINFORCEMENT BASE */}
@@ -98,11 +111,10 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
       {/* LEFT SIDE: ROUND PHOTO CONTAINER WITH DYNAMIC POP */}
       <div 
         style={{ 
-          transform: hovered ? "translateZ(50px)" : "translateZ(0px)",
-          transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
+          transform: hovered ? "translateZ(40px)" : "translateZ(0px)",
+          transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
         }}
-        /* RESPONSIVE FIX: Smaller image on mobile, normal size on desktop */
-        className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl"
+        className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden flex items-center justify-center relative z-20 shadow-2xl transition-all duration-300"
       >
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
@@ -114,11 +126,11 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
       {/* RIGHT SIDE: CONTENT & SOCIAL PATHS */}
       <div className="flex-grow relative z-20 md:pl-2 w-full">
         
-        {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER WITH CUSTOM MATRIX GLOW */}
+        {/* MAGNETIC SHIFTING DEVELOPER NAME CONTAINER */}
         <div 
           style={{ 
-            transform: hovered ? "translateZ(70px)" : "translateZ(0px)",
-            transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
+            transform: hovered ? "translateZ(50px)" : "translateZ(0px)",
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
           className="mb-1 md:mb-2 relative"
         >
@@ -126,10 +138,10 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             initial={false}
             animate={{
               color: hovered ? glowColor : "#ffffff",
-              letterSpacing: hovered ? "0.08em" : "0em",
+              letterSpacing: hovered ? "0.06em" : "0em",
               filter: hovered ? `drop-shadow(0 0 12px ${glowColor})` : "drop-shadow(0 0 0px rgba(0,0,0,0))"
             }}
-            transition={{ type: "spring", stiffness: 250, damping: 18 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
             className="text-2xl md:text-3xl font-black tracking-wide select-none"
           >
             {name}
@@ -141,10 +153,9 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
         {/* Clickable Social Navigation Icons */}
         <div 
           style={{ 
-            transform: hovered ? "translateZ(40px)" : "translateZ(0px)",
-            transition: "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)"
+            transform: hovered ? "translateZ(30px)" : "translateZ(0px)",
+            transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
-          /* RESPONSIVE FIX: Center icons on mobile, align left on larger screens */
           className="flex gap-4 md:gap-5 items-center justify-center sm:justify-start"
         >
           {/* GitHub Link */}
@@ -153,7 +164,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()} 
-            className="hover:scale-125 transition-all opacity-50 hover:opacity-100 hover:drop-shadow-[0_0_8px_#fff]"
+            className="hover:scale-125 transition-all duration-300 ease-out opacity-50 hover:opacity-100 hover:drop-shadow-[0_0_8px_#fff]"
           >
             <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -166,7 +177,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="hover:scale-125 transition-all opacity-50 hover:opacity-100"
+            className="hover:scale-125 transition-all duration-300 ease-out opacity-50 hover:opacity-100"
             style={{ filter: hovered ? `drop-shadow(0 0 8px ${glowColor})` : 'none' }}
           >
             <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
@@ -180,7 +191,7 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="hover:scale-125 transition-all opacity-50 hover:opacity-100"
+            className="hover:scale-125 transition-all duration-300 ease-out opacity-50 hover:opacity-100"
             style={{ filter: hovered ? `drop-shadow(0 0 8px ${glowColor})` : 'none' }}
           >
             <svg className="w-5 h-5 md:w-6 md:h-6 fill-white" viewBox="0 0 24 24">
@@ -203,6 +214,9 @@ export default function Developers() {
     { name: "Siddhant Jindal", github: "https://github.com", linkedin: "https://linkedin.com", instagram: "https://www.instagram.com/siddhant_jindal72/", img: "/dev4.jpeg", theme: "orange" },
     { name: "Varchasvi Gupta", github: "https://github.com/Varchasvi22", linkedin: "https://www.linkedin.com/in/varchasvi-gupta-90716737b/", instagram: "https://www.instagram.com/debuggingvarchasvi", img: "/dev5.jpeg", theme: "purple" },
     { name: "Abhilasha Das", github: "https://github.com/abhilashadas2406-eng", linkedin: "https://www.linkedin.com/in/abhilasha-das-93828937a/", instagram: "https://www.instagram.com/_.abhil1sha._/", img: "/dev6.jpeg", theme: "yellow" },
+    { name: "Saanvi ", github: "https://github.com/saanvis2007", linkedin: "https://www.linkedin.com/in/saanvi-sharma-81a645236/", instagram: "https://www.instagram.com/saanvisharma_2007", img: "/dev7.jpeg", theme: "red" },
+    { name: "Gurshan Shergill", github: "https://github.com/Gurshan-Shergill", linkedin: "https://in.linkedin.com/in/gurshan-shergill-933028217", instagram: "https://www.instagram.com/shergillgurshan/", img: "/dev8.jpeg", theme: "violet" },
+    { name: "Aditya Grover", github: "https://github.com/AdityaG-07", linkedin: "https://www.linkedin.com/in/aditya-grover-a7a31330a ", instagram: "https://www.instagram.com/a.d.i.t.y.a._.07", img: "/dev9.jpeg", theme: "teal" },
   ];
 
   return (
@@ -219,7 +233,7 @@ export default function Developers() {
         <p className="text-slate-500 text-[10px] md:text-xs mt-3 tracking-widest font-extrabold uppercase">ISTE Technical Chapter Web Development Team</p>
       </header>
 
-      {/* RESPONSIVE FIX: Removed inline window.innerWidth grid and replaced with Tailwind CSS grid */}
+      {/* GRID CONTAINER */}
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-8 py-4 relative z-20 w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 w-full">
           {teamMembers.map((member, idx) => (
