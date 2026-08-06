@@ -17,23 +17,41 @@ const LoginPage = () => {
     setLoading(true);
     setErrorMsg('');
 
+
+    // Login with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: emailId,
-      password: password,
+      password: password
     });
 
     if (error) {
       setErrorMsg(error.message);
       setLoading(false);
-    } else {
+    } else if (data.user) {
+      // Fetch user profile to get roles
+      const { data: profile } = await supabase
+        .from('custom_users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+        
+      if (profile) {
+        localStorage.setItem('userSession', JSON.stringify({ email: profile.email, id: profile.id, role: profile.role }));
+      }
       setLoading(false);
+      
+      
       setShowAnimation(true); // Animation trigger
       
       setTimeout(() => {
         window.location.href = '/home'; 
       }, 4000);
+    } else {
+      setErrorMsg('Invalid email or password');
+      setLoading(false);
     }
   };
+
 
   return (
     <div className="relative min-h-screen bg-[#030508]">

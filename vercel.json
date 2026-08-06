@@ -1,0 +1,15 @@
+{
+  "name": "society-tracker-new",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "build": {
+    "env": {
+      "VITE_SUPABASE_URL": "https://nqnmekmrwuxwqjenbnwu.supabase.co",
+      "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xbm1la21yd3V4d3FqZW5ibnd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1NjgyNDEsImV4cCI6MjEwMTE0NDI0MX0.TfNy5eh39b8BZkkDI1PyTdkcGQ8qCxB4j6Ctb9KiO-g"
+    }
+  }
+}
