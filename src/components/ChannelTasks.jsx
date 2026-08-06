@@ -1,451 +1,411 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../supabaseClient';
+import ParticleBackground from '../components/ParticleBackground';
+import { parseRoles, hasAdminAccess } from '../roleUtils';
 
-import { supabase } from "../supabaseClient";
-import ParticleBackground from "./ParticleBackground";
+const PRIORITIES = ['P1', 'P2', 'P3', 'P4', 'P5'];
 
-const PRIORITIES = ["P1", "P2", "P3", "P4", "P5"];
+const parseTaskTitle = (title) => {
+  if (!title) return { isParsed: false, name: '' };
+  
+  const meetingMatch = title.match(/^\[(.*?)\]\s*(.*?)\s*-\s*URL:\s*(.*)$/);
+  if (meetingMatch) {
+    return { isParsed: true, isMeeting: true, type: meetingMatch[1], name: meetingMatch[2], desc: meetingMatch[3], by: '', to: '' };
+  }
 
-const EMPTY_TASK = {
-  title: "",
-  priority: "P1",
-  deadline: "",
+  const taskMatch = title.match(/^\[(.*?)\]\s*(.*?)(?:\s*:\s*(.*?))?\s*\(By:\s*(.*?)\s*\|\s*To:\s*(.*?)\)$/);
+  if (taskMatch) {
+    return { isParsed: true, isMeeting: false, type: taskMatch[1], name: taskMatch[2], desc: taskMatch[3] || '', by: taskMatch[4], to: taskMatch[5] };
+  }
+
+  return { isParsed: false, name: title };
 };
 
 export default function ChannelTasks() {
   const { eventName, channelName } = useParams();
-
   const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState(EMPTY_TASK);
-
+  const [newTask, setNewTask] = useState({ name: '', desc: '', date: '', time: '', priority: 'P1', type: 'Task', designation: '', assignedTo: '', meetingUrl: '' });
   const [editingId, setEditingId] = useState(null);
-  const [editTitle, setEditTitle] = useState("");
+  const [editTitle, setEditTitle] = useState('');
+  const [userRole, setUserRole] = useState([]);
+  const [loadingRole, setLoadingRole] = useState(true);
+  const [activeTab, setActiveTab] = useState('Tasks');
 
-  const [loadingTasks, setLoadingTasks] = useState(true);
-  const [deployingTask, setDeployingTask] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-
-  const fetchTasks = useCallback(async () => {
-    if (!eventName || !channelName) {
-      setTasks([]);
-      setLoadingTasks(false);
-      return;
-    }
-
-    setLoadingTasks(true);
-    setErrorMessage("");
-
-    const { data, error } = await supabase
-      .from("channel_tasks")
-      .select("*")
-      .eq("event_name", eventName)
-      .eq("channel_name", channelName)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Could not fetch channel tasks:", error);
-      setErrorMessage(`Could not load tasks: ${error.message}`);
-      setTasks([]);
-      setLoadingTasks(false);
-      return;
-    }
-
-    setTasks(data ?? []);
-    setLoadingTasks(false);
+  useEffect(() => { 
+    checkRole();
+    fetchTasks(); 
   }, [eventName, channelName]);
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+  const checkRole = async () => {
+    const offlineStr = localStorage.getItem('userSession');
+    if (offlineStr) {
+      const userSession = JSON.parse(offlineStr);
+      if (hasAdminAccess(userSession.role)) {
+        setUserRole(['ADMIN']);
+        setLoadingRole(false);
+        return;
+      }
+      try {
+        const { data } = await supabase.from('custom_users').select('role').eq('id', userSession.id).maybeSingle();
+        setUserRole(parseRoles(data?.role));
+      } catch (err) {
+        setUserRole(['MEMBER-1']);
+      }
+    } else {
+      setUserRole(['MEMBER-1']);
+    }
+    setLoadingRole(false);
+  };
 
-  const handleAddTask = async (event) => {
-    event.preventDefault();
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase.from('channel_tasks').select('*')
+        .eq('event_name', eventName).eq('channel_name', channelName)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (err) {
+      // Offline fallback
+      const local = JSON.parse(localStorage.getItem(`offline_tasks_${eventName}_${channelName}`) || '[]');
+      setTasks(local);
+    }
+  };
 
-    const trimmedTitle = newTask.title.trim();
-
-    if (!trimmedTitle) {
-      setErrorMessage("Please enter a task description.");
-      return;
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    
+    let formattedTitle = '';
+    if (newTask.type === 'Meeting Link') {
+      formattedTitle = `[Meeting Link] ${newTask.name} - URL: ${newTask.meetingUrl}`;
+    } else {
+      formattedTitle = `[${newTask.type}] ${newTask.name}${newTask.desc ? ': ' + newTask.desc : ''} (By: ${newTask.designation || 'N/A'} | To: ${newTask.assignedTo || 'All'})`;
     }
 
-    if (!newTask.deadline) {
-      setErrorMessage("Please select a deadline.");
-      return;
-    }
+    let formattedDeadline = `${newTask.date} ${newTask.time}`;
 
-    if (!eventName || !channelName) {
-      setErrorMessage("The event or channel name is missing.");
-      return;
-    }
-
-    setDeployingTask(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    const taskToInsert = {
-      event_name: eventName,
-      channel_name: channelName,
-      title: trimmedTitle,
+    const newTaskObj = { 
+      event_name: eventName, 
+      channel_name: channelName, 
+      title: formattedTitle,
       priority: newTask.priority,
-      deadline: newTask.deadline,
+      deadline: formattedDeadline
     };
 
-    console.log("Deploying task:", taskToInsert);
-
-    const { data, error } = await supabase
-      .from("channel_tasks")
-      .insert([taskToInsert])
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Task deployment failed:", error);
-
-      setErrorMessage(
-        `Task could not be deployed: ${error.message}`
-      );
-
-      setDeployingTask(false);
-      return;
+    try {
+      const { error } = await supabase.from('channel_tasks').insert([newTaskObj]);
+      if (error) throw error;
+    } catch (err) {
+      // Offline fallback
+      newTaskObj.id = Date.now();
+      const local = JSON.parse(localStorage.getItem(`offline_tasks_${eventName}_${channelName}`) || '[]');
+      localStorage.setItem(`offline_tasks_${eventName}_${channelName}`, JSON.stringify([newTaskObj, ...local]));
     }
-
-    console.log("Task deployed successfully:", data);
-
-    setNewTask(EMPTY_TASK);
-    setSuccessMessage(
-      "Task deployed successfully. Notifications should now be created automatically."
-    );
-    setDeployingTask(false);
-
-    await fetchTasks();
-
-    window.setTimeout(() => {
-      setSuccessMessage("");
-    }, 4000);
+    
+    setNewTask({ name: '', desc: '', date: '', time: '', priority: 'P1', type: 'Task', designation: '', assignedTo: '', meetingUrl: '' });
+    fetchTasks();
   };
 
-  const handleDelete = async (taskId) => {
-    const shouldDelete = window.confirm(
-      "Are you sure you want to delete this task?"
-    );
-
-    if (!shouldDelete) {
-      return;
+  const handleDelete = async (id) => {
+    if(window.confirm("Delete this task?")) {
+        try {
+          const { error } = await supabase.from('channel_tasks').delete().eq('id', id);
+          if (error) throw error;
+        } catch (err) {
+          const local = JSON.parse(localStorage.getItem(`offline_tasks_${eventName}_${channelName}`) || '[]');
+          localStorage.setItem(`offline_tasks_${eventName}_${channelName}`, JSON.stringify(local.filter(t => t.id !== id)));
+        }
+        fetchTasks();
     }
-
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    const { error } = await supabase
-      .from("channel_tasks")
-      .delete()
-      .eq("id", taskId);
-
-    if (error) {
-      console.error("Task deletion failed:", error);
-      setErrorMessage(
-        `Task could not be deleted: ${error.message}`
-      );
-      return;
-    }
-
-    setSuccessMessage("Task deleted successfully.");
-    await fetchTasks();
   };
 
-  const startEditing = (task) => {
-    setEditingId(task.id);
-    setEditTitle(task.title);
-    setErrorMessage("");
-    setSuccessMessage("");
-  };
-
-  const cancelEditing = () => {
+  const handleUpdate = async (id) => {
+    try {
+      const { error } = await supabase.from('channel_tasks').update({ title: editTitle }).eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      const local = JSON.parse(localStorage.getItem(`offline_tasks_${eventName}_${channelName}`) || '[]');
+      const updated = local.map(t => t.id === id ? { ...t, title: editTitle } : t);
+      localStorage.setItem(`offline_tasks_${eventName}_${channelName}`, JSON.stringify(updated));
+    }
     setEditingId(null);
-    setEditTitle("");
+    fetchTasks();
   };
 
-  const handleUpdate = async (taskId) => {
-    const trimmedTitle = editTitle.trim();
+  const sortedTasks = tasks;
 
-    if (!trimmedTitle) {
-      setErrorMessage("Task description cannot be empty.");
-      return;
-    }
+  const sections = [
+    { id: 'Tasks', title: 'Tasks', data: sortedTasks.filter(t => {
+        const parsed = parseTaskTitle(t.title);
+        return parsed.type !== 'Meeting Link' && parsed.type !== 'Announcement';
+    }) },
+    { id: 'Announcements', title: 'Announcements', data: sortedTasks.filter(t => parseTaskTitle(t.title).type === 'Announcement') },
+    { id: 'Meeting Links', title: 'Meeting Links', data: sortedTasks.filter(t => parseTaskTitle(t.title).type === 'Meeting Link') }
+  ];
 
-    setErrorMessage("");
-    setSuccessMessage("");
+  const activeSection = sections.find(s => s.id === activeTab);
 
-    const { error } = await supabase
-      .from("channel_tasks")
-      .update({
-        title: trimmedTitle,
-      })
-      .eq("id", taskId);
-
-    if (error) {
-      console.error("Task update failed:", error);
-      setErrorMessage(
-        `Task could not be updated: ${error.message}`
-      );
-      return;
-    }
-
-    setEditingId(null);
-    setEditTitle("");
-    setSuccessMessage("Task updated successfully.");
-
-    await fetchTasks();
+  const channelAccess = {
+    "General Announcement": ["EB", "CORE", "OEC", "EMH", "OC", "MEMBER-1", "MEMBER-2", "ADMIN"],
+    "EB": ["EB", "ADMIN"], "CORE": ["EB", "CORE", "ADMIN"], "OEC & EMH": ["EB", "CORE", "OEC", "EMH", "ADMIN"],
+    "OC": ["EB", "CORE", "OC", "ADMIN"], "TECHNICAL": ["EB", "CORE", "OEC", "TECHNICAL", "ADMIN"],
+    "MARKETING": ["EB", "CORE", "OEC", "MARKETING", "ADMIN"], "DESIGN": ["EB", "CORE", "DESIGN", "ADMIN"],
+    "MEDIA": ["EB", "CORE", "EMH", "MEDIA", "ADMIN"], "CONTENT": ["EB", "CORE", "CONTENT", "ADMIN"],
+    "PUBLICITY": ["EB", "CORE", "EMH", "PUBLICITY", "ADMIN"], "CREATIVITY": ["EB", "CORE", "CREATIVITY", "ADMIN"],
+    "1st YEAR ONLY": ["EB", "CORE", "MEMBER-1", "ADMIN"], "General Chat": ["EB", "CORE", "OEC", "EMH", "OC", "MEMBER-1", "MEMBER-2", "ADMIN"]
   };
+
+  const actualChannelKey = Object.keys(channelAccess).find(k => 
+    k.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-') === channelName
+  );
+
+  const canAccess = userRole.includes('ADMIN') || 
+                    userRole.includes('COMPLETE_ACCESS') || 
+                    userRole.includes(`${eventName}:ALL`) || 
+                    (actualChannelKey && channelAccess[actualChannelKey]?.some(r => userRole.includes(`${eventName}:${r}`) || userRole.includes(r)));
+
+  if (loadingRole) {
+    return <div className="min-h-screen bg-[#030508] text-cyan-400 font-bold tracking-widest flex justify-center items-center">Authenticating...</div>;
+  }
+
+  if (!canAccess) {
+    return (
+      <div className="min-h-screen bg-[#030508] text-red-500 font-bold uppercase tracking-widest flex flex-col justify-center items-center">
+        <div>Access Denied</div>
+        <Link to={`/event/${eventName}`} className="mt-4 px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-all text-white">Back to Event</Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#030508] p-6 text-white md:p-8">
+    <div className="min-h-screen bg-[#030508] text-white p-8 pb-32 relative overflow-hidden">
       <ParticleBackground />
-
-      <div className="relative z-20 mx-auto mb-10 flex max-w-7xl flex-col items-start justify-between gap-5 md:flex-row md:items-end">
+      
+      <div className="max-w-7xl mx-auto mb-10 flex justify-between items-end relative z-20">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-500">
-            Events / {eventName}
-          </p>
-
-          <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-black uppercase text-transparent md:text-5xl">
-            {channelName?.replace(/-/g, " ")}
-          </h1>
+          <p className="text-cyan-500 text-xs font-mono tracking-[0.2em] uppercase">Events / {eventName}</p>
+          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase">{actualChannelKey || channelName?.replace(/-/g, ' ')}</h1>
         </div>
-
-        <Link
-          to="/home"
-          className="rounded-xl border border-white/10 bg-white/5 px-6 py-2 text-sm transition-all hover:bg-white/10"
-        >
-          Back to Channels
-        </Link>
+        <Link to={`/home`} className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-all">Back to Channels</Link>
       </div>
-
-      <div className="relative z-20 mx-auto mb-6 max-w-7xl">
-        {errorMessage && (
-          <div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
-            {errorMessage}
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mb-4 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-sm text-green-300">
-            {successMessage}
-          </div>
-        )}
-      </div>
-
-      <div className="relative z-20 mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="h-fit rounded-3xl border border-white/5 bg-[#0a0f1c]/60 p-8 backdrop-blur-xl">
-          <h2 className="mb-6 text-xl font-bold text-cyan-400">
-            Deploy New Task
-          </h2>
-
-          <form
-            onSubmit={handleAddTask}
-            className="space-y-4"
-          >
-            <input
-              type="text"
-              className="w-full rounded-xl border border-white/5 bg-black/40 p-4 outline-none focus:border-cyan-500"
-              placeholder="Task description..."
-              value={newTask.title}
-              onChange={(event) =>
-                setNewTask((currentTask) => ({
-                  ...currentTask,
-                  title: event.target.value,
-                }))
-              }
-              disabled={deployingTask}
-              required
-            />
-
-            <select
-              className="w-full cursor-pointer appearance-none rounded-xl border border-white/5 bg-black/40 p-4 outline-none"
-              value={newTask.priority}
-              onChange={(event) =>
-                setNewTask((currentTask) => ({
-                  ...currentTask,
-                  priority: event.target.value,
-                }))
-              }
-              disabled={deployingTask}
-            >
-              {PRIORITIES.map((priority) => (
-                <option
-                  key={priority}
-                  value={priority}
-                  className="bg-[#0a0f1c]"
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto z-20 relative">
+        <div className="bg-[#0a0f1c]/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 h-fit">
+          <h2 className="text-xl font-bold mb-6 text-cyan-400">Deploy New {newTask.type}</h2>
+          <form onSubmit={handleAddTask} className="space-y-4">
+            
+            {/* Styled Segmented Control for Type Selection */}
+            <div className="flex flex-col md:flex-row bg-black/40 rounded-2xl p-1.5 mb-4 border border-white/10 gap-1">
+              {['Task', 'Announcement', 'Meeting Link'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setNewTask({...newTask, type})}
+                  className={`flex-1 py-3 px-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${
+                    newTask.type === type 
+                    ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.5)] scale-[1.02]'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
                 >
-                  {priority}
-                </option>
+                  {type}
+                </button>
               ))}
-            </select>
+            </div>
 
-            <input
-              type="date"
-              className="w-full cursor-pointer rounded-xl border border-white/5 bg-black/40 p-4 text-slate-300 outline-none"
-              value={newTask.deadline}
-              onChange={(event) =>
-                setNewTask((currentTask) => ({
-                  ...currentTask,
-                  deadline: event.target.value,
-                }))
-              }
-              onClick={(event) => {
-                if (event.currentTarget.showPicker) {
-                  event.currentTarget.showPicker();
-                }
-              }}
-              style={{
-                colorScheme: "dark",
-              }}
-              disabled={deployingTask}
-              required
+            <input 
+              className="w-full p-4 bg-black/40 border border-white/5 rounded-xl outline-none focus:border-cyan-500" 
+              placeholder={newTask.type === 'Meeting Link' ? 'Meeting Title' : `${newTask.type} Name`} 
+              value={newTask.name} 
+              onChange={(e) => setNewTask({...newTask, name: e.target.value})} 
+              required 
             />
 
-            <button
-              type="submit"
-              disabled={deployingTask}
-              className="w-full rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 py-4 font-bold transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {deployingTask
-                ? "Deploying..."
-                : "Deploy Task"}
-            </button>
+            {newTask.type === 'Meeting Link' && (
+              <input 
+                className="w-full p-4 bg-black/40 border border-white/5 rounded-xl outline-none focus:border-cyan-500 text-cyan-400" 
+                placeholder="Meeting URL (e.g. https://meet.google.com/...)" 
+                value={newTask.meetingUrl} 
+                onChange={(e) => setNewTask({...newTask, meetingUrl: e.target.value})} 
+                required 
+              />
+            )}
+
+            {newTask.type !== 'Meeting Link' && (
+              <textarea 
+                className="w-full p-4 bg-black/40 border border-white/5 rounded-xl outline-none focus:border-cyan-500 h-24" 
+                placeholder={`${newTask.type} Description`} 
+                value={newTask.desc} 
+                onChange={(e) => setNewTask({...newTask, desc: e.target.value})} 
+              />
+            )}
+
+            {(newTask.type === 'Task' || newTask.type === 'Announcement') && (
+              <select 
+                className="w-full p-4 bg-black/40 border border-white/5 rounded-xl outline-none focus:border-cyan-500 text-slate-300 appearance-none cursor-pointer" 
+                value={newTask.designation} 
+                onChange={(e) => setNewTask({...newTask, designation: e.target.value})} 
+              >
+                <option value="" disabled>Select Position/Designation</option>
+                {["EB", "Core", "Member"].map(role => (
+                  <option key={role} value={role} className="bg-[#0a0f1c]">{role}</option>
+                ))}
+              </select>
+            )}
+
+            {newTask.type === 'Task' && (
+              <input 
+                className="w-full p-4 bg-black/40 border border-white/5 rounded-xl outline-none focus:border-cyan-500" 
+                placeholder="Assigned To (e.g. Design Team, John)..." 
+                value={newTask.assignedTo} 
+                onChange={(e) => setNewTask({...newTask, assignedTo: e.target.value})} 
+              />
+            )}
+            
+            {newTask.type === 'Task' && (
+              <select 
+                className="w-full p-4 bg-black/40 focus:bg-black/40 border border-white/5 rounded-xl outline-none appearance-none cursor-pointer text-slate-300" 
+                onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                value={newTask.priority}
+              >
+                {PRIORITIES.map(p => <option key={p} value={p} className="bg-[#0a0f1c]">{p}</option>)}
+              </select>
+            )}
+            
+            {(newTask.type === 'Task' || newTask.type === 'Meeting Link') && (
+              <div className="grid grid-cols-2 gap-4">
+                <input 
+                  type="date" 
+                  className="w-full p-4 bg-black/40 focus:bg-black/40 border border-white/5 rounded-xl outline-none cursor-pointer text-slate-300" 
+                  onChange={(e) => setNewTask({...newTask, date: e.target.value})} 
+                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                  style={{ colorScheme: 'dark' }}
+                  value={newTask.date}
+                  required 
+                />
+                <input 
+                  type="time" 
+                  className="w-full p-4 bg-black/40 focus:bg-black/40 border border-white/5 rounded-xl outline-none cursor-pointer text-slate-300" 
+                  onChange={(e) => setNewTask({...newTask, time: e.target.value})} 
+                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                  style={{ colorScheme: 'dark' }}
+                  value={newTask.time}
+                  required 
+                />
+              </div>
+            )}
+            
+            <button type="submit" className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl font-bold hover:scale-[1.01] transition-transform">Deploy {newTask.type}</button>
           </form>
         </div>
 
-        <div className="space-y-4 lg:col-span-2">
-          {loadingTasks && (
-            <div className="rounded-2xl border border-white/5 bg-[#0a0f1c]/40 p-6 text-slate-400">
-              Loading tasks...
-            </div>
-          )}
-
-          {!loadingTasks && tasks.length === 0 && (
-            <div className="rounded-2xl border border-white/5 bg-[#0a0f1c]/40 p-8 text-center">
-              <p className="font-semibold text-slate-300">
-                No tasks deployed yet
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Deploy the first task for this channel.
-              </p>
-            </div>
-          )}
-
-          <AnimatePresence>
-            {tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                initial={{
-                  opacity: 0,
-                  y: 20,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                exit={{
-                  opacity: 0,
-                  x: -20,
-                }}
-                className="group flex items-center justify-between rounded-2xl border border-white/5 bg-[#0a0f1c]/40 p-6 transition-all hover:border-white/10"
+        <div className="lg:col-span-2 flex flex-col h-full max-h-[80vh] overflow-y-auto scrollbar-hide pb-10 gap-4 pr-2">
+          {/* Tabs Navigation */}
+          <div className="flex gap-2 border-b border-white/10 pt-3 pb-4 mb-2 overflow-x-auto scrollbar-hide">
+            {sections.map(section => (
+              <button
+                key={section.id}
+                onClick={() => setActiveTab(section.id)}
+                className={`relative px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-300 ${
+                  activeTab === section.id 
+                    ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
+                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                }`}
               >
-                {editingId === task.id ? (
-                  <input
-                    type="text"
-                    className="w-full rounded border border-cyan-500 bg-black/50 p-2 text-white outline-none"
-                    value={editTitle}
-                    onChange={(event) =>
-                      setEditTitle(event.target.value)
-                    }
-                    autoFocus
-                  />
-                ) : (
-                  <div>
-                    <p className="text-lg font-bold text-white">
-                      {task.title}
-                    </p>
-
-                    <p className="mt-1 font-mono text-xs text-slate-500">
-                      📅 {task.deadline}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 pl-4">
-                  <span
-                    className={`rounded-lg px-3 py-1 text-[10px] font-black ${
-                      task.priority === "P1"
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-cyan-500/20 text-cyan-400"
-                    }`}
-                  >
-                    {task.priority}
+                {section.title}
+                {section.data.length > 0 && (
+                  <span className={`absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] rounded-full border-2 border-[#030508] font-black ${
+                    activeTab === section.id ? 'bg-black text-cyan-400' : 'bg-cyan-500 text-black'
+                  }`}>
+                    {section.data.length}
                   </span>
-
-                  {editingId === task.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdate(task.id)
-                        }
-                        className="font-bold text-green-400 hover:text-green-300"
-                      >
-                        Save
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={cancelEditing}
-                        className="font-bold text-slate-400 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => startEditing(task)}
-                        className="rounded-lg p-2 text-blue-400 hover:bg-white/5"
-                        title="Edit task"
-                      >
-                        ✏️
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDelete(task.id)
-                        }
-                        className="rounded-lg p-2 text-red-400 hover:bg-white/5"
-                        title="Delete task"
-                      >
-                        🗑️
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDelete(task.id)
-                        }
-                        className="rounded-lg p-2 text-green-400 hover:bg-white/5"
-                        title="Complete task"
-                      >
-                        ✔
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+                )}
+              </button>
             ))}
-          </AnimatePresence>
+          </div>
+
+          {/* Active Section Content */}
+          <div className="flex flex-col">
+            <div className="space-y-4">
+              <AnimatePresence mode="popLayout">
+                {activeSection?.data.length === 0 ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-slate-500 text-center py-10 font-medium">
+                    No {activeSection.title.toLowerCase()} deployed yet.
+                  </motion.div>
+                ) : (
+                  activeSection?.data.map(task => (
+                    <motion.div key={task.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} 
+                      className="bg-[#0a0f1c]/40 p-6 rounded-2xl border border-white/5 flex justify-between items-center group hover:border-white/10 transition-all">
+                      {editingId === task.id ? (
+                        <input className="bg-black/50 p-2 w-full rounded border border-cyan-500 text-white outline-none" defaultValue={task.title} onChange={(e) => setEditTitle(e.target.value)} autoFocus />
+                      ) : (
+                        (() => {
+                          const parsed = parseTaskTitle(task.title);
+                          return (
+                            <div className="flex-1 pr-4">
+                              {parsed.isParsed ? (
+                                <>
+                                  <div className="flex items-center gap-2.5 mb-1.5">
+                                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-800/50 border border-slate-700/50 px-2 py-0.5 rounded-md tracking-wider whitespace-nowrap shadow-sm">
+                                      {parsed.type}
+                                    </span>
+                                    <h3 className="font-bold text-lg text-slate-100 leading-tight tracking-tight">{parsed.name}</h3>
+                                  </div>
+                                  
+                                  {parsed.desc && parsed.isMeeting ? (
+                                    <a href={parsed.desc} target="_blank" rel="noreferrer" className="text-[13px] text-cyan-400 hover:text-cyan-300 hover:underline mt-1 mb-3 block break-all transition-colors">{parsed.desc}</a>
+                                  ) : parsed.desc ? (
+                                    <p className="text-[13.5px] text-slate-400 mb-3 leading-relaxed font-light">{parsed.desc}</p>
+                                  ) : null}
+
+                                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-mono">
+                                    {!parsed.isMeeting && (
+                                      <>
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="text-slate-500">To</span> 
+                                          <span className="text-blue-200/70 font-medium px-2 py-0.5 bg-blue-500/5 border border-blue-500/10 rounded-md">{parsed.to}</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="text-slate-500">By</span> 
+                                          <span className="text-purple-200/70 font-medium px-2 py-0.5 bg-purple-500/5 border border-purple-500/10 rounded-md">{parsed.by}</span>
+                                        </span>
+                                      </>
+                                    )}
+                                    <span className="flex items-center gap-1.5 text-slate-400">
+                                      <span className="opacity-70">📅</span> 
+                                      <span>{task.deadline}</span>
+                                    </span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="font-bold text-lg text-white mb-2">{task.title}</p>
+                                  <p className="text-xs text-slate-500 font-mono">📅 {task.deadline}</p>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()
+                      )}
+                      <div className="flex items-center gap-3 pl-4">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black ${task.priority === 'P1' ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>{task.priority}</span>
+                        {editingId === task.id ? (
+                          <button onClick={() => handleUpdate(task.id)} className="text-green-400 font-bold hover:text-green-300 ml-2">Save</button>
+                        ) : (
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => { setEditingId(task.id); setEditTitle(task.title); }} className="p-2 hover:bg-white/5 rounded-lg text-blue-400" title="Edit">✏️</button>
+                            <button onClick={() => handleDelete(task.id)} className="p-2 hover:bg-white/5 rounded-lg text-red-400" title="Delete">🗑️</button>
+                            <button onClick={() => handleDelete(task.id)} className="p-2 hover:bg-white/5 rounded-lg text-green-400" title="Complete">✔</button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,146 +1,53 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Link, useLocation } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
 
 const items = [
-  {
-    name: "HOME",
-    path: "/home",
-    icon: "🏠",
-  },
-  {
-    name: "MY SPACE",
-    path: "/my-space",
-    icon: "📁",
-  },
-  {
-    name: "DEVELOPERS",
-    path: "/developers",
-    icon: "💻",
-  },
-  {
-    name: "NOTIFICATIONS",
-    path: "/notifications",
-    icon: "🔔",
-    isNotification: true,
-  },
-  {
-    name: "PROFILE",
-    path: "/profile",
-    icon: "👤",
-  },
+  { name: 'HOME', path: '/home', icon: '🏠' },
+  { name: 'MY SPACE', path: '/my-space', icon: '📁' },
+  { name: 'PROGRESS BAR', path: '/progress', icon: '📊' },
+  { name: 'DEVELOPERS', path: '/developers', icon: '💻' }, // Added right before PROFILE
+  { name: 'PROFILE', path: '/profile', icon: '👤' },
 ];
 
-export default function FloatingDock({ user }) {
+export default function FloatingDock() {
   const { pathname } = useLocation();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setUnreadCount(0);
-      return undefined;
-    }
-
-    let isMounted = true;
-
-    async function loadUnreadCount() {
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .eq("recipient_id", user.id)
-        .eq("is_read", false);
-
-      if (error) {
-        console.error(
-          "Could not load unread notification count:",
-          error
-        );
-        return;
-      }
-
-      if (isMounted) {
-        setUnreadCount(count ?? 0);
-      }
-    }
-
-    loadUnreadCount();
-
-    const notificationChannel = supabase
-      .channel(`floating-dock-notifications-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `recipient_id=eq.${user.id}`,
-        },
-        () => {
-          loadUnreadCount();
-        }
-      )
-      .subscribe();
-
-    // Also refresh the number when the browser/tab is focused again.
-    function handleWindowFocus() {
-      loadUnreadCount();
-    }
-
-    window.addEventListener("focus", handleWindowFocus);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener("focus", handleWindowFocus);
-      supabase.removeChannel(notificationChannel);
-    };
-  }, [user?.id]);
 
   return (
-    <div className="fixed bottom-4 sm:bottom-8 left-0 right-0 z-50 flex justify-center px-3">
-      <motion.div
-        className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-2 shadow-2xl backdrop-blur-xl scrollbar-hide sm:gap-2 sm:p-3"
-        initial={{ y: 100 }}
+    // FIX: added px-3 so the dock never touches the screen edges, and dropped
+    // the bottom offset a bit on mobile (bottom-4) vs desktop (sm:bottom-8) so
+    // it takes up less of the limited vertical space on small screens.
+    <div className="fixed bottom-4 sm:bottom-8 left-0 right-0 flex justify-center z-50 px-3">
+      <motion.div 
+        // FIX: 
+        // - gap-1 sm:gap-2  -> tighter spacing between tabs on mobile
+        // - p-2 sm:p-3      -> tighter outer padding on mobile
+        // - max-w-full      -> dock can never be wider than the viewport
+        // - overflow-x-auto -> if it STILL doesn't fit (e.g. very narrow/older
+        //   phones), the dock becomes horizontally scrollable instead of
+        //   silently clipping the outer tabs off-screen
+        // - scrollbar-hide  -> keeps the scroll functional without an ugly
+        //   visible scrollbar (relies on the same utility class already used
+        //   in HomePage.jsx)
+        className="flex gap-1 sm:gap-2 p-2 sm:p-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl max-w-full overflow-x-auto scrollbar-hide"
+        initial={{ y: 100 }} 
         animate={{ y: 0 }}
       >
-        {items.map((item) => {
-          const isActive = pathname === item.path;
-
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className="shrink-0"
+        {items.map((item) => (
+          // FIX: shrink-0 stops a tab from being squeezed/wrapped when the
+          // dock is in scroll mode — each tab keeps its natural width.
+          <Link key={item.name} to={item.path} className="shrink-0">
+            <motion.div 
+              whileHover={{ y: -5 }}
+              whileTap={{ scale: 0.9 }}
+              className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl font-bold text-[10px] sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap transition-colors ${
+                pathname === item.path ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white'
+              }`}
             >
-              <motion.div
-                whileHover={{ y: -5 }}
-                whileTap={{ scale: 0.9 }}
-                className={`flex items-center gap-1 whitespace-nowrap rounded-xl px-3 py-1.5 text-[10px] font-bold transition-colors sm:gap-2 sm:px-5 sm:py-2 sm:text-sm ${
-                  isActive
-                    ? "bg-cyan-500/20 text-cyan-400"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <span className="relative text-sm sm:text-base">
-                  {item.icon}
-
-                  {item.isNotification && unreadCount > 0 && (
-                    <span className="absolute -right-3 -top-3 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-extrabold leading-none text-black shadow-[0_0_8px_rgba(34,211,238,0.8)]">
-                      {unreadCount > 99
-                        ? "99+"
-                        : unreadCount}
-                    </span>
-                  )}
-                </span>
-
-                {item.name}
-              </motion.div>
-            </Link>
-          );
-        })}
+              <span className="text-sm sm:text-base">{item.icon}</span> {item.name}
+            </motion.div>
+          </Link>
+        ))}
       </motion.div>
     </div>
   );

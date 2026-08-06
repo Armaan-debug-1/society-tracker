@@ -5,28 +5,57 @@ import ParticleBackground from "./ParticleBackground";
 
 export default function Profile({ user }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', contact: '', gender: '', association: '' });
+  const [formData, setFormData] = useState({ fullName: '', contact: '', gender: '', association: '', password: '' });
+
 
   useEffect(() => { if (user?.id) fetchProfileData(); }, [user?.id]);
 
   async function fetchProfileData() {
-    const { data } = await supabase.from('profiles').select('full_name, contact, gender, association').eq('id', user.id).maybeSingle();
-    if (data) {
-      setFormData({
-        fullName: data.full_name || '', contact: data.contact || '',
-        gender: data.gender || '', association: data.association || ''
-      });
+    try {
+      const { data, error } = await supabase.from('custom_users').select('full_name, contact, gender, association').eq('id', user.id).maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          fullName: data.full_name || '', contact: data.contact || '',
+          gender: data.gender || '', association: data.association || ''
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile data from Supabase", err);
     }
   }
 
   const handleSave = async () => {
-    const { error } = await supabase.from('profiles').update({
-      full_name: formData.fullName, contact: formData.contact,
-      gender: formData.gender, association: formData.association
-    }).eq('id', user.id);
-    
-    if (!error) setIsEditing(false);
-    alert(error ? "Error saving!" : "Profile Updated!");
+    try {
+      const updatePayload = {
+        full_name: formData.fullName, contact: formData.contact,
+        gender: formData.gender, association: formData.association
+      };
+      
+      // If user typed a new password, update it securely via Supabase Auth
+      if (formData.password && formData.password.trim() !== '') {
+        const { error: authError } = await supabase.auth.updateUser({
+          password: formData.password.trim()
+        });
+        if (authError) throw new Error("Password update failed: " + authError.message);
+      }
+
+      const { data, error } = await supabase.from('custom_users').update(updatePayload).eq('id', user.id).select();
+      
+      if (error) throw new Error("Profile update failed: " + error.message);
+      
+      if (!data || data.length === 0) {
+        throw new Error("Profile not found in database or permission denied.");
+      }
+      
+      setIsEditing(false);
+      setFormData(prev => ({ ...prev, password: '' })); // clear password field
+      alert("Profile & Password Updated Successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "An error occurred while updating.");
+    }
   };
 
   return (
@@ -77,16 +106,31 @@ export default function Profile({ user }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {[ { label: 'Full Name', name: 'fullName' }, { label: 'Contact', name: 'contact' }, { label: 'Gender', name: 'gender' }, { label: 'Association', name: 'association' } ].map((field) => (
+              {[ { label: 'Full Name', name: 'fullName' }, { label: 'Contact', name: 'contact' }, { label: 'Gender', name: 'gender' }, { label: 'Association', name: 'association' }, { label: 'New Password (Optional)', name: 'password', type: 'password' } ].map((field) => (
                 <motion.div key={field.name} whileHover={{ y: -5 }}>
                   <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">{field.label}</label>
                   {isEditing ? (
-                    <input name={field.name} value={formData[field.name]} onChange={(e) => setFormData({...formData, [field.name]: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-5 text-base focus:border-cyan-500 outline-none transition-all shadow-inner" />
+                    <input type={field.type || "text"} name={field.name} value={formData[field.name] || ''} onChange={(e) => setFormData({...formData, [field.name]: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-5 text-base focus:border-cyan-500 outline-none transition-all shadow-inner" placeholder={field.name === 'password' ? 'Leave blank to keep current' : ''} />
                   ) : (
-                    <div className="w-full bg-black/30 border border-white/5 rounded-2xl px-6 py-5 text-base text-slate-200 font-medium tracking-wide">{formData[field.name] || 'Not set'}</div>
+                    <div className="w-full bg-black/30 border border-white/5 rounded-2xl px-6 py-5 text-base text-slate-200 font-medium tracking-wide">
+                      {field.name === 'password' ? '********' : (formData[field.name] || 'Not set')}
+                    </div>
                   )}
                 </motion.div>
               ))}
+            </div>
+
+
+            <div className="mt-8">
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('userSession');
+                  window.location.href = '/';
+                }}
+                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-2xl font-black uppercase tracking-widest transition-all"
+              >
+                Sign Out
+              </button>
             </div>
           </motion.div>
         </div>

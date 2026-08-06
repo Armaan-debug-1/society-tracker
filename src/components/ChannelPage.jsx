@@ -17,7 +17,7 @@ export default function ChannelPage({ user }) {
   }, [channelName, user]);
 
   async function fetchRole() {
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    const { data } = await supabase.from('custom_users').select('role').eq('id', user.id).single();
     if (data) setRole(data.role);
   }
 

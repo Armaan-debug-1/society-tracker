@@ -1,0 +1,1 @@
+@tailwind base;@tailwind components;@tailwind utilities;::-webkit-scrollbar{display:none}*{-ms-overflow-style:none;scrollbar-width:none}:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark}body,html{-webkit-tap-highlight-color:transparent;background-color:#030508;height:100%;margin:0;padding:0}
