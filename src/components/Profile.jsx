@@ -1,35 +1,102 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import ParticleBackground from "./ParticleBackground";
 
 export default function Profile({ user }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', contact: '', gender: '', association: '', password: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  useEffect(() => { if (user?.id) fetchProfileData(); }, [user?.id]);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    contact: "",
+    gender: "",
+    association: "",
+    password: "",
+  });
 
-  async function fetchProfileData() {
-    const localData = localStorage.getItem(`demo_profile_${user?.id}`);
-    if (localData) {
-      setFormData(JSON.parse(localData));
+  // Fetch profile details directly from Supabase
+  const fetchProfileData = useCallback(async () => {
+    const activeUserId = user?.id;
+    if (!activeUserId) return;
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("full_name, contact, gender, association")
+      .eq("id", activeUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching profile:", error);
+      setMessage({ type: "error", text: "Could not load profile details." });
+    } else if (data) {
+      setFormData({
+        fullName: data.full_name || "",
+        contact: data.contact || "",
+        gender: data.gender || "",
+        association: data.association || "",
+        password: "", // Kept blank for security
+      });
+    }
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
+
+  // Handle Save (Profile Updates + Password Reset via Supabase)
+  const handleSave = async () => {
+    const activeUserId = user?.id;
+    if (!activeUserId) {
+      setMessage({ type: "error", text: "User session expired. Please log in again." });
       return;
     }
 
-    const { data } = await supabase.from('profiles').select('full_name, contact, gender, association').eq('id', user.id).maybeSingle();
-    if (data) {
-      setFormData({
-        fullName: data.full_name || '', contact: data.contact || '',
-        gender: data.gender || '', association: data.association || '',
-        password: 'demo_password'
-      });
-    }
-  }
+    setSaving(true);
+    setMessage({ type: "", text: "" });
 
-  const handleSave = () => {
-    localStorage.setItem(`demo_profile_${user?.id}`, JSON.stringify(formData));
-    setIsEditing(false);
-    alert("Profile Updated (Local Demo)!");
+    try {
+      // 1. Update Profile Information in Supabase DB Table
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.fullName,
+          contact: formData.contact,
+          gender: formData.gender,
+          association: formData.association,
+        })
+        .eq("id", activeUserId);
+
+      if (profileError) throw profileError;
+
+      // 2. Update Password if user entered a new one
+      if (formData.password.trim().length > 0) {
+        if (formData.password.trim().length < 6) {
+          throw new Error("Password must be at least 6 characters long.");
+        }
+
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: formData.password.trim(),
+        });
+
+        if (passwordError) throw passwordError;
+      }
+
+      setMessage({ type: "success", text: "Profile & Registry updated successfully!" });
+      setIsEditing(false);
+      setFormData((prev) => ({ ...prev, password: "" })); // Reset password field
+      await fetchProfileData();
+    } catch (err) {
+      console.error("Profile save error:", err);
+      setMessage({ type: "error", text: err.message || "Failed to update profile." });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+    }
   };
 
   const handleLogout = async () => {
@@ -38,70 +105,124 @@ export default function Profile({ user }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#030508] text-white flex flex-col relative overflow-hidden font-sans">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#030508] font-sans text-white">
       <ParticleBackground />
-      
-      <main className="flex-grow p-8 relative z-20 max-w-5xl mx-auto w-full mt-10">
-        {/* Updated Heading with Blue/Cyan tone */}
-        <motion.div 
-          initial={{ opacity: 0, x: -50 }} 
-          animate={{ opacity: 1, x: 0 }} 
+
+      <main className="relative z-20 mx-auto mt-10 flex-grow w-full max-w-5xl p-8">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ type: "spring", stiffness: 100, damping: 10 }}
           className="mb-12"
         >
-          <h1 className="text-6xl font-black text-cyan-400 uppercase tracking-[0.1em] drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">PROFILE</h1>
+          <h1 className="text-6xl font-black uppercase tracking-[0.1em] text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">
+            PROFILE
+          </h1>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Avatar Card */}
-          <motion.div 
-            animate={{ y: [0, -15, 0] }} 
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="bg-[#0a0f1c]/70 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-10 text-center flex flex-col items-center shadow-2xl relative overflow-hidden group hover:border-cyan-500/50 transition-all"
+        {/* Feedback Message Alert */}
+        {message.text && (
+          <div
+            className={`mb-6 rounded-2xl border p-4 text-sm font-medium ${
+              message.type === "error"
+                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                : "border-green-500/30 bg-green-500/10 text-green-300"
+            }`}
           >
-             <motion.div 
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                className="w-32 h-32 bg-gradient-to-tr from-cyan-500 to-indigo-500 rounded-full flex items-center justify-center text-5xl font-black text-white shadow-[0_0_50px_rgba(6,182,212,0.6)] mb-8"
+            {message.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {/* Avatar Card */}
+          <motion.div
+            animate={{ y: [0, -15, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="group relative flex flex-col items-center overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0f1c]/70 p-10 text-center shadow-2xl backdrop-blur-2xl transition-all hover:border-cyan-500/50"
+          >
+            <motion.div
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              className="mb-8 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-500 to-indigo-500 text-5xl font-black text-white shadow-[0_0_50px_rgba(6,182,212,0.6)]"
             >
-              {user?.email?.charAt(0).toUpperCase()}
+              {user?.email?.charAt(0).toUpperCase() || "U"}
             </motion.div>
-            <h3 className="text-3xl font-bold">{formData.fullName || 'New User'}</h3>
-            <p className="text-slate-400 text-sm mt-3 font-mono tracking-widest break-all">{user?.email}</p>
+            <h3 className="text-3xl font-bold">{formData.fullName || "New User"}</h3>
+            <p className="mt-3 break-all font-mono text-sm tracking-widest text-slate-400">
+              {user?.email}
+            </p>
           </motion.div>
 
-          {/* Details Card */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }} 
-            animate={{ opacity: 1, scale: 1 }} 
+          {/* Registry Details Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 80 }}
-            className="md:col-span-2 bg-[#0a0f1c]/70 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-10 space-y-10 shadow-2xl hover:border-white/20 transition-all"
+            className="space-y-10 rounded-[2.5rem] border border-white/10 bg-[#0a0f1c]/70 p-10 shadow-2xl backdrop-blur-2xl transition-all hover:border-white/20 md:col-span-2"
           >
-            <div className="flex justify-between items-center border-b border-white/5 pb-6">
-              <h4 className="text-sm font-black uppercase tracking-[0.3em] text-cyan-400">Registry Details</h4>
+            <div className="flex items-center justify-between border-b border-white/5 pb-6">
+              <h4 className="text-sm font-black uppercase tracking-[0.3em] text-cyan-400">
+                Registry Details
+              </h4>
               <div className="flex gap-4">
-                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
-                  className="text-xs font-black uppercase tracking-[0.2em] text-white bg-white/5 px-10 py-4 rounded-2xl border border-white/10 hover:bg-cyan-600 transition-all active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
-                  {isEditing ? 'Save Changes' : 'Edit Registry'}
+                <button
+                  onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+                  disabled={saving || loading}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-10 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all hover:bg-cyan-600 active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : isEditing ? "Save Changes" : "Edit Registry"}
                 </button>
-                <button onClick={handleLogout} 
-                  className="text-xs font-black uppercase tracking-[0.2em] text-white bg-red-500/10 px-10 py-4 rounded-2xl border border-red-500/20 hover:bg-red-600 hover:border-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all active:scale-95">
+                <button
+                  onClick={handleLogout}
+                  className="rounded-2xl border border-red-500/20 bg-red-500/10 px-10 py-4 text-xs font-black uppercase tracking-[0.2em] text-white transition-all hover:border-red-500 hover:bg-red-600 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] active:scale-95"
+                >
                   Logout
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {[ { label: 'Full Name', name: 'fullName' }, { label: 'Contact', name: 'contact' }, { label: 'Gender', name: 'gender' }, { label: 'Association', name: 'association' }, { label: 'Password', name: 'password', type: 'password' } ].map((field) => (
-                <motion.div key={field.name} whileHover={{ y: -5 }}>
-                  <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">{field.label}</label>
-                  {isEditing ? (
-                    <input type={field.type || "text"} name={field.name} value={formData[field.name]} onChange={(e) => setFormData({...formData, [field.name]: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-5 text-base focus:border-cyan-500 outline-none transition-all shadow-inner" />
-                  ) : (
-                    <div className="w-full bg-black/30 border border-white/5 rounded-2xl px-6 py-5 text-base text-slate-200 font-medium tracking-wide">{field.type === 'password' ? '••••••••' : (formData[field.name] || 'Not set')}</div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="p-8 text-center text-slate-400">Loading profile information...</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+                {[
+                  { label: "Full Name", name: "fullName", placeholder: "e.g. John Doe" },
+                  { label: "Contact", name: "contact", placeholder: "e.g. +1234567890" },
+                  { label: "Gender", name: "gender", placeholder: "e.g. Male / Female / Other" },
+                  { label: "Association", name: "association", placeholder: "e.g. Core Team" },
+                  {
+                    label: "New Password",
+                    name: "password",
+                    type: "password",
+                    placeholder: "Enter new password to update...",
+                  },
+                ].map((field) => (
+                  <motion.div key={field.name} whileHover={{ y: -5 }}>
+                    <label className="mb-4 block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                      {field.label}
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type={field.type || "text"}
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        value={formData[field.name]}
+                        onChange={(e) =>
+                          setFormData({ ...formData, [field.name]: e.target.value })
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-black/50 px-6 py-5 text-base shadow-inner outline-none transition-all focus:border-cyan-500"
+                      />
+                    ) : (
+                      <div className="w-full rounded-2xl border border-white/5 bg-black/30 px-6 py-5 text-base font-medium tracking-wide text-slate-200">
+                        {field.type === "password"
+                          ? "••••••••"
+                          : formData[field.name] || "Not set"}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
       </main>
