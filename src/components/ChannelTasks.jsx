@@ -258,12 +258,12 @@ export default function ChannelTasks() {
             Events / {eventName}
           </p>
 
-          <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-black uppercase text-transparent md:text-5xl">
+          <h1 className={`bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text font-black uppercase text-transparent ${channelName?.length > 14 ? 'text-2xl md:text-3xl lg:text-4xl' : 'text-3xl md:text-5xl'}`}>
             {channelName?.replace(/-/g, " ")}
           </h1>
         </div>
         
-        <div className="flex gap-4 items-center mt-4 md:mt-0">
+        <div className="flex flex-wrap gap-4 items-center mt-4 md:mt-0">
           <button 
             onClick={() => setActiveTab('tasks')}
             className={`relative rounded-full px-4 py-2 text-sm transition-all font-bold ${activeTab === 'tasks' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
