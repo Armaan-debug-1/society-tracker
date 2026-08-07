@@ -263,10 +263,14 @@ export default function ChannelTasks() {
           </h1>
         </div>
         
-        <div className="flex flex-wrap gap-4 items-center mt-4 md:mt-0">
-          <button 
-            onClick={() => setActiveTab('tasks')}
-            className={`relative rounded-full px-4 py-2 text-sm transition-all font-bold ${activeTab === 'tasks' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+        <div className="mt-4 flex flex-wrap items-center gap-4 md:mt-0">
+          <button
+            onClick={() => setActiveTab("tasks")}
+            className={`relative rounded-full px-4 py-2 text-sm font-bold transition-all ${
+              activeTab === "tasks"
+                ? "bg-cyan-500/20 text-cyan-400"
+                : "bg-white/5 text-slate-400 hover:bg-white/10"
+            }`}
           >
             Tasks
             <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500 text-[10px] text-white">
