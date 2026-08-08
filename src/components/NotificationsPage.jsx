@@ -51,6 +51,7 @@ function NotificationsPage({ user }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [markingAll, setMarkingAll] = useState(false);
   const [pushPermission, setPushPermission] = useState(
     typeof window !== "undefined" && "Notification" in window
       ? Notification.permission
@@ -207,6 +208,35 @@ function NotificationsPage({ user }) {
     navigate(notification.route);
   }
 
+  // 🟢 Mark All As Read Handler
+  async function markAllAsRead() {
+    if (!user?.id || unreadCount === 0) return;
+
+    setMarkingAll(true);
+
+    // Instant UI Update
+    setNotifications((currentNotifications) =>
+      currentNotifications.map((notif) => ({
+        ...notif,
+        unread: false,
+        is_read: true,
+      }))
+    );
+
+    // Database Sync
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("recipient_id", user.id)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Could not mark all as read in Database:", error);
+    }
+
+    setMarkingAll(false);
+  }
+
   const unreadCount = notifications.filter(
     (notification) => notification.unread
   ).length;
@@ -273,24 +303,39 @@ function NotificationsPage({ user }) {
           </div>
         </div>
 
-        {user && (
-          <button
-            type="button"
-            onClick={handleEnablePush}
-            disabled={pushPermission === "granted"}
-            className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer ${
-              pushPermission === "granted"
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
-                : "bg-gradient-to-r from-cyan-500 to-indigo-600 hover:scale-105 active:scale-95 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
-            }`}
-          >
-            {pushPermission === "granted"
-              ? "Device Push Active ✅"
-              : pushPermission === "denied"
-              ? "Push Blocked ⚠️"
-              : "Enable Device Push 🔔"}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* 🟢 Mark All as Read Button */}
+          {user && unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              disabled={markingAll}
+              className="px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-white/5 border border-white/10 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>✓✓</span>
+              <span>{markingAll ? "Marking..." : "Mark all as read"}</span>
+            </button>
+          )}
+
+          {user && (
+            <button
+              type="button"
+              onClick={handleEnablePush}
+              disabled={pushPermission === "granted"}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer ${
+                pushPermission === "granted"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default"
+                  : "bg-gradient-to-r from-cyan-500 to-indigo-600 hover:scale-105 active:scale-95 text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]"
+              }`}
+            >
+              {pushPermission === "granted"
+                ? "Device Push Active ✅"
+                : pushPermission === "denied"
+                ? "Push Blocked ⚠️"
+                : "Enable Device Push 🔔"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 p-6 md:p-8 max-w-2xl">
