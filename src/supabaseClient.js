@@ -11,7 +11,16 @@ if (!supabaseKey) {
   throw new Error("VITE_SUPABASE_ANON_KEY is missing from .env");
 }
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseKey
-);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+    // Automatic reconnection settings if WebSocket drops
+    timeout: 30000,
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});

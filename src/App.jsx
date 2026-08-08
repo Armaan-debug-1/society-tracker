@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import { supabase } from "./supabaseClient";
+import { subscribeUserToPush } from "./utils/pushSubscriber";
 import LoginPage from "./components/LoginPage";
 import HomePage from "./components/HomePage";
 import EventPage from "./components/EventPage";
@@ -20,12 +21,12 @@ import LoadingScreen from "./components/LoadingScreen";
 import Developers from "./components/Developers";
 import NotificationsPage from "./components/NotificationsPage";
 import ProgressBarPage from "./components/ProgressBarPage";
+import NotificationBell from "./components/NotificationBell"; // 🟢 ADDED IMPORT
 
 // ----------------------------------------------------------------------
 // Route Guards
 // ----------------------------------------------------------------------
 
-// Protects internal pages: Redirects unauthenticated users back to Login ("/")
 function ProtectedRoute({ user, children }) {
   if (!user) {
     return <Navigate to="/" replace />;
@@ -33,7 +34,6 @@ function ProtectedRoute({ user, children }) {
   return children;
 }
 
-// Protects the Login page: Redirects already authenticated users to "/home"
 function PublicOnlyRoute({ user, children }) {
   if (user) {
     return <Navigate to="/home" replace />;
@@ -48,12 +48,26 @@ function PublicOnlyRoute({ user, children }) {
 function DockWrapper({ user }) {
   const location = useLocation();
 
-  // Hide floating dock on the login screen or if no user is present
   if (location.pathname === "/" || !user) {
     return null;
   }
 
   return <FloatingDock user={user} />;
+}
+
+// 🟢 Global Realtime Listener & Bell Header Overlay
+function NotificationOverlay({ user }) {
+  const location = useLocation();
+
+  if (location.pathname === "/" || !user) {
+    return null;
+  }
+
+  return (
+    <div className="fixed right-6 top-6 z-[9999] flex items-center gap-3">
+      <NotificationBell />
+    </div>
+  );
 }
 
 function NotFoundPage() {
@@ -82,7 +96,15 @@ function App() {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch initial session from localStorage / Supabase
+    // --- Register Service Worker for System Push Notifications ---
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => console.log("Service Worker registered successfully:", reg.scope))
+        .catch((err) => console.error("Service Worker registration failed:", err));
+    }
+
+    // --- Initialise Auth ---
     async function initialiseAuth() {
       try {
         const { data, error } = await supabase.auth.getSession();
@@ -113,7 +135,6 @@ function App() {
 
     initialiseAuth();
 
-    // Listen for auth updates (sign in, sign out, token refreshes)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -130,7 +151,15 @@ function App() {
     };
   }, []);
 
-  // Display initial loading state while Supabase reads the cached token from localStorage
+  // Automatically prompt for native notification permissions when a user is authenticated
+  useEffect(() => {
+    if (currentUser && "Notification" in window) {
+      if (Notification.permission === "default") {
+        subscribeUserToPush(currentUser);
+      }
+    }
+  }, [currentUser]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#030508] font-bold uppercase tracking-widest text-cyan-400">
@@ -144,6 +173,9 @@ function App() {
       <div className="min-h-screen bg-[#030508]">
         {showGlobalLoading && <LoadingScreen />}
 
+        {/* 🟢 Mount NotificationBell Globally */}
+        <NotificationOverlay user={currentUser} />
+
         {authError && (
           <div className="fixed left-1/2 top-4 z-[9999] -translate-x-1/2 rounded bg-red-900 px-4 py-2 text-white shadow-lg">
             {authError}
@@ -151,7 +183,6 @@ function App() {
         )}
 
         <Routes>
-          {/* Public-only Route: Redirects to /home if user is already logged in */}
           <Route
             path="/"
             element={
@@ -161,7 +192,6 @@ function App() {
             }
           />
 
-          {/* Protected Routes */}
           <Route
             path="/home"
             element={
@@ -243,7 +273,6 @@ function App() {
             }
           />
 
-          {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
 
