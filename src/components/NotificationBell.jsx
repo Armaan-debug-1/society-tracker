@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import toast, { Toaster } from "react-hot-toast";
 
-export default function NotificationBell() {
+export default function NotificationBell({ isGlobalListener = false }) {
   const navigate = useNavigate();
   const bellRef = useRef(null);
 
@@ -13,92 +13,86 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pushStatus, setPushStatus] = useState("default");
 
-  // 1. Native OS Banner Dispatcher
-  const showNativeNotification = (rawTitle, body) => {
+  // Native Device Banner Dispatcher
+  const showNativeNotification = async (rawTitle, body) => {
     if (!("Notification" in window) || Notification.permission !== "granted") {
       return;
     }
 
     const title = rawTitle && String(rawTitle).trim() ? String(rawTitle) : "New Task Alert 📋";
-    const messageBody = body && String(body).trim() ? String(body) : "A new task was deployed to your workspace.";
+    const messageBody = body && String(body).trim() ? String(body) : "A new task was deployed.";
+
+    const options = {
+      body: messageBody,
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      tag: "app-notification",
+      renotify: true,
+      data: { url: "/notifications" },
+    };
 
     try {
-      const notif = new Notification(title, {
-        body: messageBody,
-        icon: "/favicon.ico",
-        tag: "app-notification",
-        renotify: true,
-      });
-
+      const notif = new Notification(title, options);
       notif.onclick = () => {
         window.focus();
         navigate("/notifications");
       };
+      return;
     } catch (e) {
-      console.warn("Native Notification error:", e);
+      console.warn("Direct notification failed:", e);
+    }
+
+    if ("serviceWorker" in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && registration.showNotification) {
+          await registration.showNotification(title, options);
+        }
+      } catch (err) {
+        console.error("SW notification error:", err);
+      }
     }
   };
 
-  // 2. Guaranteed In-App Toast Banner
+  // In-App Toast Card Pop
   const showInAppToast = (title, message) => {
-    toast(
+    toast.custom(
       (t) => (
         <div
           onClick={() => {
             toast.dismiss(t.id);
             navigate("/notifications");
           }}
-          style={{
-            background: "#10131f",
-            border: "1px solid rgba(56, 189, 248, 0.5)",
-            boxShadow: "0 0 25px rgba(56, 189, 248, 0.35)",
-            borderRadius: "16px",
-            padding: "14px",
-            color: "#ffffff",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            cursor: "pointer",
-            maxWidth: "380px",
-            width: "100%",
-          }}
+          className={`${
+            t.visible ? "animate-enter" : "animate-leave"
+          } max-w-md w-full bg-[#10131f] border border-cyan-400/50 shadow-[0_0_30px_rgba(56,189,248,0.35)] rounded-2xl p-4 flex items-start gap-3.5 cursor-pointer hover:border-cyan-400 transition-all text-white z-[99999]`}
         >
-          <span style={{ fontSize: "24px" }}>📋</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff" }}>
+          <div className="w-10 h-10 rounded-xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-xl flex-shrink-0">
+            📋
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
               {title}
-            </div>
-            <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "2px" }}>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            </h4>
+            <p className="text-xs text-gray-300 mt-1 line-clamp-2">
               {message || "New task deployed."}
-            </div>
-            <div style={{ fontSize: "10px", color: "#38bdf8", marginTop: "4px" }}>
+            </p>
+            <span className="text-[10px] text-cyan-400 font-mono mt-1 block">
               Click to view notifications →
-            </div>
+            </span>
           </div>
         </div>
       ),
-      { duration: 5000, position: "top-right" }
+      { duration: 4500, position: "top-right" }
     );
   };
 
   const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notifications.");
-      return;
-    }
-
+    if (!("Notification" in window)) return;
     try {
       const permission = await Notification.requestPermission();
       setPushStatus(permission);
-
-      if (permission === "granted") {
-        showNativeNotification(
-          "Notifications Active! 🔔",
-          "You will receive real-time updates when tasks are deployed."
-        );
-      } else if (permission === "denied") {
-        alert("Notifications are blocked in browser settings.");
-      }
     } catch (err) {
       console.error("Error requesting notification permission:", err);
     }
@@ -160,14 +154,8 @@ export default function NotificationBell() {
         .eq("recipient_id", userId)
         .eq("is_read", false);
 
-      if (error) {
-        console.error("Could not load unread count:", error);
-        return;
-      }
-
-      if (isMounted) {
-        setUnreadCount(count ?? 0);
-      }
+      if (error) return;
+      if (isMounted) setUnreadCount(count ?? 0);
     }
 
     function subscribeToNotifications(userId) {
@@ -176,10 +164,7 @@ export default function NotificationBell() {
         realtimeChannel = null;
       }
 
-      if (!userId) {
-        if (isMounted) setUnreadCount(0);
-        return;
-      }
+      if (!userId) return;
 
       loadUnreadCount(userId);
 
@@ -193,7 +178,7 @@ export default function NotificationBell() {
             table: "notifications",
           },
           (payload) => {
-            console.log("🔥 REALTIME EVENT FIRED:", payload);
+            console.log("🔥 Realtime Event Received:", payload);
 
             loadUnreadCount(userId);
             triggerPopEffect();
@@ -205,36 +190,33 @@ export default function NotificationBell() {
                 : "New Task Alert 📋");
 
             const notifMessage =
-              payload.new?.message || "A new task was deployed.";
+              payload.new?.message || "A new item was added to your workspace.";
 
-            // 1. Trigger Top-Right Toast
             showInAppToast(notifTitle, notifMessage);
-
-            // 2. Trigger System Native Pop
             showNativeNotification(notifTitle, notifMessage);
           }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+          },
+          () => loadUnreadCount(userId)
         )
         .subscribe();
     }
 
     async function initialiseNotificationBell() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (isMounted) {
-        subscribeToNotifications(session?.user?.id ?? null);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (isMounted) subscribeToNotifications(session?.user?.id ?? null);
     }
 
     initialiseNotificationBell();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        subscribeToNotifications(session?.user?.id ?? null);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) subscribeToNotifications(session?.user?.id ?? null);
     });
 
     return () => {
@@ -244,75 +226,14 @@ export default function NotificationBell() {
     };
   }, []);
 
+  // Invisible background listener mode
+  if (isGlobalListener) {
+    return <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />;
+  }
+
   return (
     <>
-      {/* Toast Render Anchor */}
       <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
-
-      <style>{`
-        @keyframes ringSwing {
-          0% { transform: rotate(0deg); }
-          15% { transform: rotate(22deg); }
-          30% { transform: rotate(-18deg); }
-          45% { transform: rotate(14deg); }
-          60% { transform: rotate(-10deg); }
-          75% { transform: rotate(6deg); }
-          90% { transform: rotate(-3deg); }
-          100% { transform: rotate(0deg); }
-        }
-
-        @keyframes badgePulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.15); }
-        }
-
-        @keyframes streakFade {
-          0% { opacity: 0; }
-          20% { opacity: 1; }
-          70% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-
-        @keyframes streakOut {
-          0% { width: 0; opacity: 0; }
-          15% { opacity: 1; }
-          100% { width: var(--len); opacity: 0; }
-        }
-
-        .bell-ring {
-          animation: ringSwing 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-        }
-
-        .bell-badge {
-          animation: badgePulse 2.2s ease-in-out infinite;
-        }
-
-        .streak-layer {
-          position: fixed;
-          inset: 0;
-          z-index: 9998;
-          pointer-events: none;
-          animation: streakFade 0.8s ease forwards;
-        }
-
-        .streak {
-          position: absolute;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, #bfe9ff, transparent);
-          transform-origin: 0 50%;
-          animation: streakOut 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
-        }
-
-        #root.hyperstreak-zoom {
-          transition: transform 0.5s cubic-bezier(0.5, 0, 0.5, 1), filter 0.5s ease;
-          transform: scale(1.4);
-          filter: blur(6px) brightness(1.3);
-        }
-
-        #root {
-          transition: transform 0.5s cubic-bezier(0.5, 0, 0.5, 1), filter 0.5s ease;
-        }
-      `}</style>
 
       <div className="flex items-center gap-3">
         {pushStatus !== "granted" && (
@@ -321,7 +242,7 @@ export default function NotificationBell() {
             onClick={requestNotificationPermission}
             className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all cursor-pointer"
           >
-            <span>Enable Device Push</span>
+            <span>Enable Push</span>
             <span>🔔</span>
           </button>
         )}
@@ -351,24 +272,6 @@ export default function NotificationBell() {
           )}
         </button>
       </div>
-
-      {streaks.length > 0 && (
-        <div className="streak-layer">
-          {streaks.map((s) => (
-            <div
-              key={s.id}
-              className="streak"
-              style={{
-                left: s.cx,
-                top: s.cy,
-                transform: `rotate(${s.angle}rad)`,
-                "--len": `${s.len}px`,
-                animationDelay: `${s.delay}ms`,
-              }}
-            />
-          ))}
-        </div>
-      )}
     </>
   );
 }
