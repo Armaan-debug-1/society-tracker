@@ -21,7 +21,7 @@ import LoadingScreen from "./components/LoadingScreen";
 import Developers from "./components/Developers";
 import NotificationsPage from "./components/NotificationsPage";
 import ProgressBarPage from "./components/ProgressBarPage";
-import NotificationBell from "./components/NotificationBell"; // 🟢 ADDED IMPORT
+import NotificationBell from "./components/NotificationBell";
 
 // ----------------------------------------------------------------------
 // Route Guards
@@ -53,21 +53,6 @@ function DockWrapper({ user }) {
   }
 
   return <FloatingDock user={user} />;
-}
-
-// 🟢 Global Realtime Listener & Bell Header Overlay
-function NotificationOverlay({ user }) {
-  const location = useLocation();
-
-  if (location.pathname === "/" || !user) {
-    return null;
-  }
-
-  return (
-    <div className="fixed right-6 top-6 z-[9999] flex items-center gap-3">
-      <NotificationBell />
-    </div>
-  );
 }
 
 function NotFoundPage() {
@@ -171,10 +156,10 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#030508]">
-        {showGlobalLoading && <LoadingScreen />}
+        {/* Silent Realtime Notification Listener */}
+        {currentUser && <NotificationBell isGlobalListener={true} />}
 
-        {/* 🟢 Mount NotificationBell Globally */}
-        <NotificationOverlay user={currentUser} />
+        {showGlobalLoading && <LoadingScreen />}
 
         {authError && (
           <div className="fixed left-1/2 top-4 z-[9999] -translate-x-1/2 rounded bg-red-900 px-4 py-2 text-white shadow-lg">
