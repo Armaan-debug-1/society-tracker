@@ -58,7 +58,8 @@ const DeveloperCard = ({ name, role, githubUrl, linkedinUrl, instagramUrl, image
     yellow: "#ffcc00",
     red: "#ff2a2a",
     violet: "#8b5cf6",
-    teal: "#00f5d4"
+    teal: "#00f5d4",
+    indigo: "#6366f1"
   };
 
   const glowColor = themeColors[colorTheme] || themeColors.cyan;
@@ -217,6 +218,7 @@ export default function Developers() {
     { name: "Saanvi ", github: "https://github.com/saanvis2007", linkedin: "https://www.linkedin.com/in/saanvi-sharma-81a645236/", instagram: "https://www.instagram.com/saanvisharma_2007", img: "/dev7.jpeg", theme: "red" },
     { name: "Gurshan Shergill", github: "https://github.com/Gurshan-Shergill", linkedin: "https://in.linkedin.com/in/gurshan-shergill-933028217", instagram: "https://www.instagram.com/shergillgurshan/", img: "/dev8.jpeg", theme: "violet" },
     { name: "Aditya Grover", github: "https://github.com/AdityaG-07", linkedin: "https://www.linkedin.com/in/aditya-grover-a7a31330a ", instagram: "https://www.instagram.com/a.d.i.t.y.a._.07", img: "/dev9.jpeg", theme: "teal" },
+    { name: "Akhil Kumar Anand", github: "https://github.com/Akhil444y", linkedin: "https://www.linkedin.com/in/akhil-kumar-anand-7bb45b380", instagram: "https://www.instagram.com/i.akhil444/", img: "/dev10.jpeg", theme: "indigo" },
   ];
 
   return (
